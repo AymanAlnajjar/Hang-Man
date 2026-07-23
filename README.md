@@ -2,9 +2,15 @@
 
 A real-time, two-player Arabic Hangman game built for playing together across
 any distance. One person creates a room and shares the link; the other joins.
-Each round, one player secretly chooses an Arabic word and the other guesses it
-letter by letter on a beautiful on-screen Arabic keyboard. Roles swap every
-round.
+There's a beautiful on-screen Arabic keyboard, live chat, and two ways to play:
+
+- **🤝 تعاوني (Co-op):** one player secretly picks a word, the other guesses it
+  letter by letter. Roles swap each round.
+- **⚔️ تنافسي (Versus):** each of you picks a word for the *other*, then you both
+  race to solve your word at the same time. Whoever solves with the **fewest
+  mistakes wins**.
+
+Plus a built-in **live chat** so you can talk while you play. ❤️
 
 - **Frontend:** Next.js (React) → hosted on **Vercel**
 - **Backend:** **Supabase** (Postgres + Realtime) — keeps both screens in sync
@@ -37,7 +43,9 @@ both with GitHub or Google).
 2. In the left sidebar open **SQL Editor** → **New query**.
 3. Open the file [`supabase-setup.sql`](./supabase-setup.sql) from this project,
    copy **everything**, paste it in, and click **Run**. You should see
-   "Success".
+   "Success". (This script is safe to re-run any time — if you already set the
+   game up before the Versus + chat update, just run it again to add the new
+   columns and the chat table. No data is lost.)
 4. Go to **Project Settings** (gear icon) → **API**. Copy these two values:
    - **Project URL** (looks like `https://abcd1234.supabase.co`)
    - **anon public** key (a long string under "Project API keys")

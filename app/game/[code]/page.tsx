@@ -6,6 +6,10 @@ import { supabase } from "@/lib/supabase";
 import { getPlayerId } from "@/lib/player";
 import {
   MAX_WRONG,
+  countWrong,
+  isDone,
+  isSolved,
+  versusWinner,
   type Game,
 } from "@/lib/game";
 import {
@@ -16,8 +20,20 @@ import {
 import Hangman from "@/components/Hangman";
 import WordDisplay from "@/components/WordDisplay";
 import Keyboard from "@/components/Keyboard";
+import Chat from "@/components/Chat";
 
 type Phase = "loading" | "notfound" | "full" | "ready";
+
+function validateWord(raw: string): { word?: string; error?: string } {
+  const w = normalizeArabic(raw);
+  const lettersOnly = w.replace(/ /g, "");
+  if (lettersOnly.length < 2) return { error: "اكتب كلمة من حرفين على الأقل." };
+  if (lettersOnly.length > 24)
+    return { error: "الكلمة طويلة جدًا (٢٤ حرفًا كحد أقصى)." };
+  const bad = firstInvalidChar(w);
+  if (bad) return { error: `الحرف «${bad}» غير مدعوم. استخدم حروفًا عربية فقط.` };
+  return { word: w };
+}
 
 export default function GameRoom() {
   const params = useParams();
@@ -49,7 +65,6 @@ export default function GameRoom() {
         .maybeSingle();
 
       if (cancelled) return;
-
       if (error || !data) {
         setPhase("notfound");
         return;
@@ -61,19 +76,21 @@ export default function GameRoom() {
       if (!isPlayer && !claimedRef.current) {
         claimedRef.current = true;
         if (g.player_a && !g.player_b && g.player_a !== pid) {
-          // Second player joins. This client (and only this one) decides who
-          // sets the word first — randomly — and moves the game to "choosing".
-          const chooser = Math.random() < 0.5 ? g.player_a : pid;
+          // Second player joins → move the game to "choosing".
+          // In co-op mode we also randomly pick who sets the word first.
+          const patch: Partial<Game> = { player_b: pid, status: "choosing" };
+          if (g.mode === "coop") {
+            patch.chooser = Math.random() < 0.5 ? g.player_a : pid;
+          }
           const { data: upd } = await supabase
             .from("games")
-            .update({ player_b: pid, chooser, status: "choosing" })
+            .update(patch)
             .eq("id", code)
             .is("player_b", null) // guard against a race with the other tab
             .select()
             .maybeSingle();
           if (upd) g = upd as Game;
           else {
-            // Someone else grabbed the seat first — re-fetch the truth.
             const { data: fresh } = await supabase
               .from("games")
               .select("*")
@@ -118,58 +135,62 @@ export default function GameRoom() {
       .channel(`game-${code}`)
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "games",
-          filter: `id=eq.${code}`,
-        },
+        { event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${code}` },
         (payload) => setGame(payload.new as Game)
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
   }, [code]);
 
-  // ---- Derived state --------------------------------------------------------
-  const iAmChooser = !!game && !!me && game.chooser === me;
+  // ---- Roles ---------------------------------------------------------------
+  const isA = !!game && me === game.player_a;
+  const isB = !!game && me === game.player_b;
+  const myRole: "a" | "b" | null = isA ? "a" : isB ? "b" : null;
   const bothPresent = !!game?.player_a && !!game?.player_b;
-  const letters = useMemo(
+  const isVersus = game?.mode === "versus";
+
+  // ---- Co-op derived state -------------------------------------------------
+  const iAmChooser = !!game && !!me && game.chooser === me;
+  const coopLetters = useMemo(
     () => (game?.word ? wordLetterSet(game.word) : new Set<string>()),
     [game?.word]
   );
-  const wrongCount = useMemo(() => {
-    if (!game?.word) return 0;
-    return game.guessed.filter((l) => !letters.has(l)).length;
-  }, [game?.guessed, game?.word, letters]);
-  const wrongLetters = useMemo(
-    () => (game ? game.guessed.filter((l) => !letters.has(l)) : []),
-    [game, letters]
-  );
+  const coopWrongCount = game?.word ? countWrong(game.word, game.guessed) : 0;
+  const coopWrongLetters = game?.word
+    ? game.guessed.filter((l) => !coopLetters.has(l))
+    : [];
 
-  // ---- Actions --------------------------------------------------------------
+  // ---- Versus derived state ------------------------------------------------
+  // The word *I* must guess (my opponent chose it), and my own guesses.
+  const myWord = isA ? game?.word_for_a : game?.word_for_b;
+  const myGuessed = (isA ? game?.guessed_a : game?.guessed_b) ?? [];
+  // The word I chose *for* my opponent (I know it, so I can watch their board).
+  const oppWord = isA ? game?.word_for_b : game?.word_for_a;
+  const oppGuessed = (isA ? game?.guessed_b : game?.guessed_a) ?? [];
+  const iChoseWord = !!(isA ? game?.word_for_b : game?.word_for_a);
+  const bothChosen = !!game?.word_for_a && !!game?.word_for_b;
+  const myDone = !!(isA ? game?.a_done : game?.b_done);
+  const oppDone = !!(isA ? game?.b_done : game?.a_done);
+  const versusOver = !!game?.a_done && !!game?.b_done;
+  const myLetters = useMemo(
+    () => (myWord ? wordLetterSet(myWord) : new Set<string>()),
+    [myWord]
+  );
+  const myWrongCount = myWord ? countWrong(myWord, myGuessed) : 0;
+  const myWrongLetters = myWord
+    ? myGuessed.filter((l) => !myLetters.has(l))
+    : [];
+
+  // ---- Actions: co-op ------------------------------------------------------
   const submitWord = useCallback(async () => {
     setWordError(null);
-    const w = normalizeArabic(wordInput);
-    const lettersOnly = w.replace(/ /g, "");
-    if (lettersOnly.length < 2) {
-      setWordError("اكتب كلمة من حرفين على الأقل.");
-      return;
-    }
-    if (lettersOnly.length > 24) {
-      setWordError("الكلمة طويلة جدًا (٢٤ حرفًا كحد أقصى).");
-      return;
-    }
-    const bad = firstInvalidChar(w);
-    if (bad) {
-      setWordError(`الحرف «${bad}» غير مدعوم. استخدم حروفًا عربية فقط.`);
-      return;
-    }
+    const { word, error } = validateWord(wordInput);
+    if (error || !word) return setWordError(error ?? "كلمة غير صالحة.");
     await supabase
       .from("games")
-      .update({ word: w, guessed: [], status: "playing", result: null })
+      .update({ word, guessed: [], status: "playing", result: null })
       .eq("id", code);
     setWordInput("");
   }, [wordInput, code]);
@@ -177,26 +198,22 @@ export default function GameRoom() {
   const guess = useCallback(
     async (letter: string) => {
       if (!game || game.status !== "playing" || !game.word) return;
-      if (iAmChooser) return; // the chooser only watches
-      if (game.guessed.includes(letter)) return;
+      if (iAmChooser || game.guessed.includes(letter)) return;
 
       const guessed = [...game.guessed, letter];
-      const wordSet = wordLetterSet(game.word);
-      const wrong = guessed.filter((l) => !wordSet.has(l)).length;
-      const allRevealed = [...wordSet].every((l) => guessed.includes(l));
+      const solved = isSolved(game.word, guessed);
+      const dead = countWrong(game.word, guessed) >= MAX_WRONG;
 
       let status: Game["status"] = "playing";
       let result: Game["result"] = null;
-      if (allRevealed) {
+      if (solved) {
         status = "finished";
         result = "won";
-      } else if (wrong >= MAX_WRONG) {
+      } else if (dead) {
         status = "finished";
         result = "lost";
       }
-
-      // Optimistic local update so the guesser sees instant feedback.
-      setGame({ ...game, guessed, status, result });
+      setGame({ ...game, guessed, status, result }); // optimistic
       await supabase
         .from("games")
         .update({ guessed, status, result })
@@ -205,7 +222,7 @@ export default function GameRoom() {
     [game, iAmChooser, code]
   );
 
-  const playAgain = useCallback(async () => {
+  const playAgainCoop = useCallback(async () => {
     if (!game) return;
     const nextChooser =
       game.chooser === game.player_a ? game.player_b : game.player_a;
@@ -222,6 +239,61 @@ export default function GameRoom() {
       .eq("id", code);
   }, [game, code]);
 
+  // ---- Actions: versus -----------------------------------------------------
+  const submitVersusWord = useCallback(async () => {
+    setWordError(null);
+    if (!game) return;
+    const { word, error } = validateWord(wordInput);
+    if (error || !word) return setWordError(error ?? "كلمة غير صالحة.");
+    // I choose the word my OPPONENT will guess.
+    const patch: Partial<Game> = isA
+      ? { word_for_b: word }
+      : { word_for_a: word };
+    // Once both words are in, flip to playing.
+    const otherChosen = isA ? game.word_for_a : game.word_for_b;
+    if (otherChosen) patch.status = "playing";
+    setGame({ ...game, ...patch }); // optimistic
+    await supabase.from("games").update(patch).eq("id", code);
+    setWordInput("");
+  }, [wordInput, code, game, isA]);
+
+  const guessVersus = useCallback(
+    async (letter: string) => {
+      if (!game || !myWord || myDone) return;
+      if (myGuessed.includes(letter)) return;
+
+      const guessed = [...myGuessed, letter];
+      const done = isDone(myWord, guessed);
+      const patch: Partial<Game> = isA
+        ? { guessed_a: guessed, a_done: done }
+        : { guessed_b: guessed, b_done: done };
+      const otherDone = isA ? game.b_done : game.a_done;
+      if (done && otherDone) patch.status = "finished";
+
+      setGame({ ...game, ...patch }); // optimistic
+      await supabase.from("games").update(patch).eq("id", code);
+    },
+    [game, myWord, myGuessed, myDone, isA, code]
+  );
+
+  const playAgainVersus = useCallback(async () => {
+    if (!game) return;
+    await supabase
+      .from("games")
+      .update({
+        word_for_a: null,
+        word_for_b: null,
+        guessed_a: [],
+        guessed_b: [],
+        a_done: false,
+        b_done: false,
+        status: "choosing",
+        round: game.round + 1,
+      })
+      .eq("id", code);
+  }, [game, code]);
+
+  // ---- Sharing -------------------------------------------------------------
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -232,8 +304,6 @@ export default function GameRoom() {
     }
   }
 
-  // On phones this opens the native share sheet (WhatsApp, Messages, …).
-  // Falls back to copying the link on desktop or if sharing is unavailable.
   async function shareGame() {
     const payload = {
       title: "لعبة المشنقة",
@@ -243,30 +313,22 @@ export default function GameRoom() {
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share(payload);
-        return;
       } catch {
-        /* user dismissed the share sheet — do nothing */
-        return;
+        /* user dismissed the share sheet */
       }
+      return;
     }
     copyLink();
   }
 
-  // ---- Screens --------------------------------------------------------------
-  if (phase === "loading") {
-    return <Centered>جارٍ التحميل…</Centered>;
-  }
+  // ---- Screens: pre-game ---------------------------------------------------
+  if (phase === "loading") return <Centered>جارٍ التحميل…</Centered>;
 
   if (phase === "notfound") {
     return (
       <Centered>
         <p className="mb-4 text-lg">لا توجد غرفة بهذا الرمز.</p>
-        <button
-          onClick={() => router.push("/")}
-          className="btn-ghost rounded-2xl px-6 py-3 font-bold"
-        >
-          العودة للصفحة الرئيسية
-        </button>
+        <HomeButton router={router} label="العودة للصفحة الرئيسية" />
       </Centered>
     );
   }
@@ -275,12 +337,7 @@ export default function GameRoom() {
     return (
       <Centered>
         <p className="mb-4 text-lg">هذه الغرفة ممتلئة (لاعبان بالفعل).</p>
-        <button
-          onClick={() => router.push("/")}
-          className="btn-ghost rounded-2xl px-6 py-3 font-bold"
-        >
-          إنشاء لعبة جديدة
-        </button>
+        <HomeButton router={router} label="إنشاء لعبة جديدة" />
       </Centered>
     );
   }
@@ -304,7 +361,12 @@ export default function GameRoom() {
             {code}
           </div>
         </div>
-        <div className="text-xs text-white/50">الجولة {game.round}</div>
+        <div className="text-left">
+          <div className="text-xs text-white/50">الجولة {game.round}</div>
+          <div className="text-xs font-bold text-fuchsia-300">
+            {isVersus ? "⚔️ تنافسي" : "🤝 تعاوني"}
+          </div>
+        </div>
       </header>
 
       {/* Waiting for partner */}
@@ -342,139 +404,75 @@ export default function GameRoom() {
         </div>
       )}
 
-      {/* Choosing a word */}
-      {bothPresent && game.status === "choosing" && (
+      {/* ================= CO-OP MODE ================= */}
+      {bothPresent && !isVersus && game.status === "choosing" && (
         <>
           {iAmChooser ? (
-            <div className="glass rounded-3xl p-6">
-              <div className="mb-1 text-center text-3xl">✍️</div>
-              <h2 className="mb-1 text-center text-xl font-bold">دورك لاختيار الكلمة</h2>
-              <p className="mb-5 text-center text-sm text-white/60">
-                اكتب كلمة عربية، وسيحاول شريكك تخمينها حرفًا حرفًا.
-              </p>
-              <input
-                value={wordInput}
-                onChange={(e) => setWordInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && submitWord()}
-                placeholder="اكتب الكلمة هنا"
-                dir="rtl"
-                className="input-field mb-1 w-full rounded-2xl px-4 py-3 text-center text-2xl font-bold text-white placeholder:text-white/30"
-                autoFocus
-              />
-              <p className="mb-4 text-center text-xs text-white/40">
-                شريكك لن يرى الكلمة — فقط عدد الحروف.
-              </p>
-              {wordError && (
-                <p className="mb-3 rounded-xl bg-rose-500/15 px-4 py-2 text-center text-sm text-rose-200">
-                  {wordError}
-                </p>
-              )}
-              <button
-                onClick={submitWord}
-                className="btn-primary w-full rounded-2xl py-3 text-lg font-bold"
-              >
-                ابدأ اللعبة
-              </button>
-            </div>
+            <WordPicker
+              title="دورك لاختيار الكلمة"
+              hint="اكتب كلمة عربية، وسيحاول شريكك تخمينها حرفًا حرفًا."
+              value={wordInput}
+              onChange={setWordInput}
+              onSubmit={submitWord}
+              error={wordError}
+              cta="ابدأ اللعبة"
+            />
           ) : (
-            <div className="glass rounded-3xl p-8 text-center">
-              <div className="mb-3 text-4xl animate-floaty">⏳</div>
-              <h2 className="text-xl font-bold">شريكك يختار كلمة…</h2>
-              <p className="mt-2 text-sm text-white/60">استعد للتخمين!</p>
-            </div>
+            <WaitingCard title="شريكك يختار كلمة…" sub="استعد للتخمين!" />
           )}
         </>
       )}
 
-      {/* Playing / Finished */}
       {bothPresent &&
+        !isVersus &&
         (game.status === "playing" || game.status === "finished") &&
         game.word && (
           <div className="flex flex-col gap-4">
-            {/* Role banner */}
-            <div className="glass rounded-2xl px-4 py-2 text-center text-sm">
-              {iAmChooser ? (
-                <span className="text-white/70">
-                  👀 أنت المُختار — شريكك يخمّن كلمتك
-                </span>
-              ) : (
-                <span className="text-white/70">🧠 خمّن الكلمة!</span>
-              )}
+            <div className="glass rounded-2xl px-4 py-2 text-center text-sm text-white/70">
+              {iAmChooser ? "👀 شريكك يخمّن كلمتك" : "🧠 خمّن الكلمة!"}
             </div>
 
-            {/* Hangman + lives */}
             <div className="glass rounded-3xl p-5">
-              <Hangman wrong={wrongCount} />
-              <div className="mt-3 text-center text-sm text-white/60">
-                المحاولات المتبقية:{" "}
-                <span className="font-bold text-white">
-                  {Math.max(0, MAX_WRONG - wrongCount)}
-                </span>{" "}
-                / {MAX_WRONG}
-              </div>
-              {wrongLetters.length > 0 && (
-                <div className="mt-2 text-center text-sm text-rose-300" dir="rtl">
-                  حروف خاطئة: {wrongLetters.join(" · ")}
-                </div>
-              )}
+              <Hangman wrong={coopWrongCount} />
+              <LivesRow wrong={coopWrongCount} wrongLetters={coopWrongLetters} />
             </div>
 
-            {/* The word */}
             <div className="glass rounded-3xl p-5">
               <WordDisplay
                 word={game.word}
                 guessed={game.guessed}
-                // Chooser always sees the word; guesser only on game over.
                 reveal={iAmChooser || game.status === "finished"}
               />
             </div>
 
-            {/* Result banner */}
             {game.status === "finished" && (
-              <div
-                className={[
-                  "rounded-3xl p-5 text-center",
+              <ResultBanner
+                won={game.result === "won"}
+                title={
                   game.result === "won"
-                    ? "bg-emerald-500/15 text-emerald-200"
-                    : "bg-rose-500/15 text-rose-200",
-                ].join(" ")}
-              >
-                <div className="mb-1 text-4xl">
-                  {game.result === "won" ? "🎉" : "💔"}
-                </div>
-                <p className="text-lg font-bold">
-                  {game.result === "won"
                     ? iAmChooser
                       ? "خمّن شريكك الكلمة!"
                       : "أحسنت! خمّنت الكلمة"
                     : iAmChooser
                     ? "لم يخمّن شريكك الكلمة"
-                    : "انتهت المحاولات!"}
-                </p>
-                <p className="mt-1 text-sm opacity-80" dir="rtl">
-                  الكلمة كانت: <span className="font-bold">{game.word}</span>
-                </p>
-                <button
-                  onClick={playAgain}
-                  className="btn-primary mt-4 rounded-2xl px-6 py-3 font-bold"
-                >
-                  🔄 جولة جديدة (تبديل الأدوار)
-                </button>
-              </div>
+                    : "انتهت المحاولات!"
+                }
+                word={game.word}
+                onPlayAgain={playAgainCoop}
+                playAgainLabel="🔄 جولة جديدة (تبديل الأدوار)"
+              />
             )}
 
-            {/* Keyboard (guesser only, while playing) */}
             {game.status === "playing" && !iAmChooser && (
               <div className="glass rounded-3xl p-4">
                 <Keyboard
                   guessed={game.guessed}
-                  wordLetters={letters}
+                  wordLetters={coopLetters}
                   onGuess={guess}
                   disabled={false}
                 />
               </div>
             )}
-
             {game.status === "playing" && iAmChooser && (
               <p className="text-center text-sm text-white/50">
                 انتظر بينما يخمّن شريكك…
@@ -482,7 +480,287 @@ export default function GameRoom() {
             )}
           </div>
         )}
+
+      {/* ================= VERSUS MODE ================= */}
+      {bothPresent && isVersus && !bothChosen && (
+        <>
+          {!iChoseWord ? (
+            <WordPicker
+              title="اختر كلمة لخصمك"
+              hint="اكتب كلمة عربية سيحاول خصمك تخمينها. كلاكما يخمّن في الوقت نفسه!"
+              value={wordInput}
+              onChange={setWordInput}
+              onSubmit={submitVersusWord}
+              error={wordError}
+              cta="تأكيد الكلمة"
+            />
+          ) : (
+            <WaitingCard title="بانتظار خصمك ليختار كلمته…" sub="ثم تبدأ المنافسة!" />
+          )}
+        </>
+      )}
+
+      {bothPresent && isVersus && bothChosen && myWord && (
+        <div className="flex flex-col gap-4">
+          <div className="glass rounded-2xl px-4 py-2 text-center text-sm text-white/70">
+            {versusOver
+              ? "انتهت الجولة"
+              : myDone
+              ? "أنهيت — بانتظار خصمك…"
+              : "⚔️ خمّن كلمتك بأقل أخطاء!"}
+          </div>
+
+          {/* Opponent live race indicator */}
+          <div className="glass flex items-center justify-between rounded-2xl px-4 py-3 text-sm">
+            <span className="text-white/70">خصمك</span>
+            <span className="flex items-center gap-3">
+              <span className="text-rose-300">
+                أخطاء: {oppWord ? countWrong(oppWord, oppGuessed) : 0}
+              </span>
+              <span className="text-white/60">
+                {oppDone
+                  ? oppWord && isSolved(oppWord, oppGuessed)
+                    ? "✅ حلّها"
+                    : "💀 خسر"
+                  : "يلعب…"}
+              </span>
+            </span>
+          </div>
+
+          <div className="glass rounded-3xl p-5">
+            <Hangman wrong={myWrongCount} />
+            <LivesRow wrong={myWrongCount} wrongLetters={myWrongLetters} />
+          </div>
+
+          <div className="glass rounded-3xl p-5">
+            <WordDisplay word={myWord} guessed={myGuessed} reveal={versusOver} />
+          </div>
+
+          {versusOver ? (
+            <VersusResult game={game} isA={isA} onPlayAgain={playAgainVersus} />
+          ) : (
+            <div className="glass rounded-3xl p-4">
+              <Keyboard
+                guessed={myGuessed}
+                wordLetters={myLetters}
+                onGuess={guessVersus}
+                disabled={myDone}
+              />
+              {myDone && (
+                <p className="mt-3 text-center text-sm text-white/60">
+                  {isSolved(myWord, myGuessed)
+                    ? "🎉 حللت كلمتك! بانتظار خصمك…"
+                    : "💀 انتهت محاولاتك. بانتظار خصمك…"}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Live chat (available whenever you're in the room) */}
+      {myRole && <Chat code={code} me={me} role={myRole} />}
     </main>
+  );
+}
+
+/* -------------------------------- Pieces -------------------------------- */
+
+function VersusResult({
+  game,
+  isA,
+  onPlayAgain,
+}: {
+  game: Game;
+  isA: boolean;
+  onPlayAgain: () => void;
+}) {
+  const winner = versusWinner(game);
+  const iWon = (winner === "a" && isA) || (winner === "b" && !isA);
+  const draw = winner === "draw";
+
+  const myWord = isA ? game.word_for_a : game.word_for_b;
+  const oppWord = isA ? game.word_for_b : game.word_for_a;
+  const myGuessed = isA ? game.guessed_a : game.guessed_b;
+  const oppGuessed = isA ? game.guessed_b : game.guessed_a;
+
+  return (
+    <div
+      className={[
+        "rounded-3xl p-5 text-center",
+        draw
+          ? "bg-white/10 text-white"
+          : iWon
+          ? "bg-emerald-500/15 text-emerald-200"
+          : "bg-rose-500/15 text-rose-200",
+      ].join(" ")}
+    >
+      <div className="mb-1 text-4xl">{draw ? "🤝" : iWon ? "🏆" : "😅"}</div>
+      <p className="text-xl font-bold">
+        {draw ? "تعادل!" : iWon ? "فزت! 🎉" : "فاز خصمك"}
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded-xl bg-black/20 p-3">
+          <div className="text-white/60">كلمتك</div>
+          <div className="font-bold" dir="rtl">
+            {myWord}
+          </div>
+          <div className="mt-1 text-white/60">
+            أخطاؤك: {myWord ? countWrong(myWord, myGuessed) : 0}
+          </div>
+        </div>
+        <div className="rounded-xl bg-black/20 p-3">
+          <div className="text-white/60">كلمة خصمك</div>
+          <div className="font-bold" dir="rtl">
+            {oppWord}
+          </div>
+          <div className="mt-1 text-white/60">
+            أخطاؤه: {oppWord ? countWrong(oppWord, oppGuessed) : 0}
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={onPlayAgain}
+        className="btn-primary mt-4 rounded-2xl px-6 py-3 font-bold"
+      >
+        🔄 جولة جديدة
+      </button>
+    </div>
+  );
+}
+
+function WordPicker({
+  title,
+  hint,
+  value,
+  onChange,
+  onSubmit,
+  error,
+  cta,
+}: {
+  title: string;
+  hint: string;
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  error: string | null;
+  cta: string;
+}) {
+  return (
+    <div className="glass rounded-3xl p-6">
+      <div className="mb-1 text-center text-3xl">✍️</div>
+      <h2 className="mb-1 text-center text-xl font-bold">{title}</h2>
+      <p className="mb-5 text-center text-sm text-white/60">{hint}</p>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+        placeholder="اكتب الكلمة هنا"
+        dir="rtl"
+        enterKeyHint="done"
+        className="input-field mb-1 w-full rounded-2xl px-4 py-3 text-center text-2xl font-bold text-white placeholder:text-white/30"
+        autoFocus
+      />
+      <p className="mb-4 text-center text-xs text-white/40">
+        خصمك لن يرى الكلمة — فقط عدد الحروف.
+      </p>
+      {error && (
+        <p className="mb-3 rounded-xl bg-rose-500/15 px-4 py-2 text-center text-sm text-rose-200">
+          {error}
+        </p>
+      )}
+      <button
+        onClick={onSubmit}
+        className="btn-primary w-full rounded-2xl py-3 text-lg font-bold"
+      >
+        {cta}
+      </button>
+    </div>
+  );
+}
+
+function WaitingCard({ title, sub }: { title: string; sub: string }) {
+  return (
+    <div className="glass rounded-3xl p-8 text-center">
+      <div className="mb-3 text-4xl animate-floaty">⏳</div>
+      <h2 className="text-xl font-bold">{title}</h2>
+      <p className="mt-2 text-sm text-white/60">{sub}</p>
+    </div>
+  );
+}
+
+function LivesRow({
+  wrong,
+  wrongLetters,
+}: {
+  wrong: number;
+  wrongLetters: string[];
+}) {
+  return (
+    <>
+      <div className="mt-3 text-center text-sm text-white/60">
+        المحاولات المتبقية:{" "}
+        <span className="font-bold text-white">{Math.max(0, MAX_WRONG - wrong)}</span>{" "}
+        / {MAX_WRONG}
+      </div>
+      {wrongLetters.length > 0 && (
+        <div className="mt-2 text-center text-sm text-rose-300" dir="rtl">
+          حروف خاطئة: {wrongLetters.join(" · ")}
+        </div>
+      )}
+    </>
+  );
+}
+
+function ResultBanner({
+  won,
+  title,
+  word,
+  onPlayAgain,
+  playAgainLabel,
+}: {
+  won: boolean;
+  title: string;
+  word: string;
+  onPlayAgain: () => void;
+  playAgainLabel: string;
+}) {
+  return (
+    <div
+      className={[
+        "rounded-3xl p-5 text-center",
+        won ? "bg-emerald-500/15 text-emerald-200" : "bg-rose-500/15 text-rose-200",
+      ].join(" ")}
+    >
+      <div className="mb-1 text-4xl">{won ? "🎉" : "💔"}</div>
+      <p className="text-lg font-bold">{title}</p>
+      <p className="mt-1 text-sm opacity-80" dir="rtl">
+        الكلمة كانت: <span className="font-bold">{word}</span>
+      </p>
+      <button
+        onClick={onPlayAgain}
+        className="btn-primary mt-4 rounded-2xl px-6 py-3 font-bold"
+      >
+        {playAgainLabel}
+      </button>
+    </div>
+  );
+}
+
+function HomeButton({
+  router,
+  label,
+}: {
+  router: ReturnType<typeof useRouter>;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={() => router.push("/")}
+      className="btn-ghost rounded-2xl px-6 py-3 font-bold"
+    >
+      {label}
+    </button>
   );
 }
 
