@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  overflow-x: hidden; /* never allow sideways scroll on a phone */
+  overscroll-behavior-y: none; /* no rubber-band bounce past the edges */
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(217, 70, 239, 0.18), transparent 60%),
+    radial-gradient(1000px 700px at -10% 110%, rgba(99, 102, 241, 0.22), transparent 55%),
+    linear-gradient(160deg, #140b2e 0%, #0f0a1e 55%, #1a0f33 100%);
+  background-attachment: fixed;
+  -webkit-text-size-adjust: 100%; /* don't let mobile Safari resize our text */
+}
+
+/* Tapping shouldn't flash a gray box or accidentally select letters. */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+/* Full height that respects the mobile URL bar (dvh) with a vh fallback. */
+.min-h-dvh {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Keep content clear of the notch and the home-bar. */
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+.pb-safe {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+/* Subtle glass card used across screens */
+.glass {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.6);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #d946ef, #8b5cf6);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  box-shadow: 0 10px 30px -10px rgba(217, 70, 239, 0.6);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  transform: none;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+}
+
+.input-field {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input-field:focus {
+  outline: none;
+  border-color: rgba(217, 70, 239, 0.8);
+  box-shadow: 0 0 0 4px rgba(217, 70, 239, 0.18);
+}
