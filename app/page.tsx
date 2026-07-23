@@ -9,7 +9,7 @@ import { makeRoomCode, type GameMode } from "@/lib/game";
 export default function Home() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState("");
-  const [mode, setMode] = useState<GameMode>("coop");
+  const [mode, setMode] = useState<GameMode>("together");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,28 +63,29 @@ export default function Home() {
 
       <div className="glass w-full rounded-3xl p-6">
         {/* Mode picker */}
-        <div className="mb-3 grid grid-cols-2 gap-2">
+        <div className="mb-4 flex flex-col gap-2">
+          <ModeCard
+            active={mode === "together"}
+            onClick={() => setMode("together")}
+            icon="🤝"
+            title="تعاوني"
+            desc="نحلّ كلمة عشوائية من تصنيف تختارانه — معًا كفريق"
+          />
           <ModeCard
             active={mode === "coop"}
             onClick={() => setMode("coop")}
-            icon="🤝"
-            title="تعاوني"
-            desc="واحد يختار، والآخر يخمّن"
+            icon="✍️"
+            title="تبادلي"
+            desc="واحد يختار الكلمة، والآخر يخمّنها — ثم تتبادلان"
           />
           <ModeCard
             active={mode === "versus"}
             onClick={() => setMode("versus")}
             icon="⚔️"
             title="تنافسي"
-            desc="كلٌّ يخمّن كلمة الآخر"
+            desc="كلٌّ يختار كلمة للآخر — ومن يحلّها بأقل أخطاء يفوز"
           />
         </div>
-
-        <p className="mb-4 rounded-xl bg-white/5 px-3 py-2 text-center text-xs text-white/60">
-          {mode === "coop"
-            ? "يختار أحدكما كلمة، ويحاول الآخر تخمينها حرفًا حرفًا — ثم تتبادلان الأدوار."
-            : "يختار كلٌّ منكما كلمة لخصمه، ثم تبدآن التخمين معًا. من يحلّها بأقل أخطاء يفوز!"}
-        </p>
 
         <button
           onClick={createGame}
@@ -153,15 +154,20 @@ function ModeCard({
     <button
       onClick={onClick}
       className={[
-        "rounded-2xl border p-3 text-center transition-all",
+        "flex items-center gap-3 rounded-2xl border p-3 text-right transition-all",
         active
           ? "border-fuchsia-400 bg-fuchsia-500/15 shadow-lg shadow-fuchsia-500/10"
           : "border-white/12 bg-white/5 hover:bg-white/10",
       ].join(" ")}
     >
-      <div className="text-2xl">{icon}</div>
-      <div className="mt-1 font-bold">{title}</div>
-      <div className="mt-0.5 text-[11px] leading-tight text-white/55">{desc}</div>
+      <div className="shrink-0 text-2xl">{icon}</div>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 font-bold">
+          {title}
+          {active && <span className="text-fuchsia-300">✓</span>}
+        </div>
+        <div className="text-[11px] leading-tight text-white/55">{desc}</div>
+      </div>
     </button>
   );
 }

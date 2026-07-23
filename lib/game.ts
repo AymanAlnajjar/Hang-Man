@@ -2,7 +2,10 @@ import { wordLetterSet } from "@/lib/arabic";
 
 export const MAX_WRONG = 6; // head, body, 2 arms, 2 legs
 
-export type GameMode = "coop" | "versus";
+// coop    = one player sets a word, the other guesses (take turns)
+// versus  = each sets a word for the other; race to solve with fewest mistakes
+// together = both solve a random word from a chosen category, as a team
+export type GameMode = "coop" | "versus" | "together";
 export type GameStatus = "waiting" | "choosing" | "playing" | "finished";
 export type GameResult = "won" | "lost" | null;
 
@@ -14,11 +17,12 @@ export type Game = {
   status: GameStatus;
   round: number;
 
-  // --- Co-op mode: one player sets a word, the other guesses ---
-  chooser: string | null;
+  // --- Co-op & Together modes share these (one shared board) ---
+  chooser: string | null; // set only in coop; null in together (both guess)
   word: string | null;
   guessed: string[];
   result: GameResult;
+  category: string | null; // shown in together mode
 
   // --- Versus mode: each player sets a word for the OTHER to guess ---
   // player_a guesses `word_for_a` (chosen by B); player_b guesses `word_for_b`.

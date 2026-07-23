@@ -17,6 +17,7 @@ import {
   firstInvalidChar,
   wordLetterSet,
 } from "@/lib/arabic";
+import { CATEGORIES, randomWord, type Category } from "@/lib/words";
 import Hangman from "@/components/Hangman";
 import WordDisplay from "@/components/WordDisplay";
 import Keyboard from "@/components/Keyboard";
@@ -150,6 +151,7 @@ export default function GameRoom() {
   const myRole: "a" | "b" | null = isA ? "a" : isB ? "b" : null;
   const bothPresent = !!game?.player_a && !!game?.player_b;
   const isVersus = game?.mode === "versus";
+  const isTogether = game?.mode === "together";
 
   // ---- Co-op derived state -------------------------------------------------
   const iAmChooser = !!game && !!me && game.chooser === me;
@@ -231,6 +233,39 @@ export default function GameRoom() {
       .update({
         chooser: nextChooser,
         word: null,
+        guessed: [],
+        status: "choosing",
+        result: null,
+        round: game.round + 1,
+      })
+      .eq("id", code);
+  }, [game, code]);
+
+  // ---- Actions: together (team vs a random word from a category) -----------
+  const selectCategory = useCallback(
+    async (cat: Category) => {
+      const word = normalizeArabic(randomWord(cat));
+      await supabase
+        .from("games")
+        .update({
+          word,
+          category: cat.name,
+          guessed: [],
+          status: "playing",
+          result: null,
+        })
+        .eq("id", code);
+    },
+    [code]
+  );
+
+  const playAgainTogether = useCallback(async () => {
+    if (!game) return;
+    await supabase
+      .from("games")
+      .update({
+        word: null,
+        category: null,
         guessed: [],
         status: "choosing",
         result: null,
@@ -404,8 +439,12 @@ export default function GameRoom() {
         </div>
       )}
 
-      {/* ================= CO-OP MODE ================= */}
-      {bothPresent && !isVersus && game.status === "choosing" && (
+      {/* ============ CO-OP / TOGETHER: choosing ============ */}
+      {bothPresent && isTogether && game.status === "choosing" && (
+        <CategoryPicker onPick={selectCategory} />
+      )}
+
+      {bothPresent && !isVersus && !isTogether && game.status === "choosing" && (
         <>
           {iAmChooser ? (
             <WordPicker
@@ -429,7 +468,11 @@ export default function GameRoom() {
         game.word && (
           <div className="flex flex-col gap-4">
             <div className="glass rounded-2xl px-4 py-2 text-center text-sm text-white/70">
-              {iAmChooser ? "👀 شريكك يخمّن كلمتك" : "🧠 خمّن الكلمة!"}
+              {isTogether
+                ? `🤝 خمّنا الكلمة معًا${game.category ? ` — ${game.category}` : ""}`
+                : iAmChooser
+                ? "👀 شريكك يخمّن كلمتك"
+                : "🧠 خمّن الكلمة!"}
             </div>
 
             <div className="glass rounded-3xl p-5">
@@ -441,27 +484,40 @@ export default function GameRoom() {
               <WordDisplay
                 word={game.word}
                 guessed={game.guessed}
-                reveal={iAmChooser || game.status === "finished"}
+                reveal={(!isTogether && iAmChooser) || game.status === "finished"}
               />
             </div>
 
-            {game.status === "finished" && (
-              <ResultBanner
-                won={game.result === "won"}
-                title={
-                  game.result === "won"
-                    ? iAmChooser
-                      ? "خمّن شريكك الكلمة!"
-                      : "أحسنت! خمّنت الكلمة"
-                    : iAmChooser
-                    ? "لم يخمّن شريكك الكلمة"
-                    : "انتهت المحاولات!"
-                }
-                word={game.word}
-                onPlayAgain={playAgainCoop}
-                playAgainLabel="🔄 جولة جديدة (تبديل الأدوار)"
-              />
-            )}
+            {game.status === "finished" &&
+              (isTogether ? (
+                <ResultBanner
+                  won={game.result === "won"}
+                  title={
+                    game.result === "won"
+                      ? "حللتماها معًا! 🎉"
+                      : "انتهت المحاولات!"
+                  }
+                  word={game.word}
+                  onPlayAgain={playAgainTogether}
+                  playAgainLabel="🔄 كلمة جديدة"
+                />
+              ) : (
+                <ResultBanner
+                  won={game.result === "won"}
+                  title={
+                    game.result === "won"
+                      ? iAmChooser
+                        ? "خمّن شريكك الكلمة!"
+                        : "أحسنت! خمّنت الكلمة"
+                      : iAmChooser
+                      ? "لم يخمّن شريكك الكلمة"
+                      : "انتهت المحاولات!"
+                  }
+                  word={game.word}
+                  onPlayAgain={playAgainCoop}
+                  playAgainLabel="🔄 جولة جديدة (تبديل الأدوار)"
+                />
+              ))}
 
             {game.status === "playing" && !iAmChooser && (
               <div className="glass rounded-3xl p-4">
@@ -675,6 +731,33 @@ function WordPicker({
       >
         {cta}
       </button>
+    </div>
+  );
+}
+
+function CategoryPicker({ onPick }: { onPick: (cat: Category) => void }) {
+  return (
+    <div className="glass rounded-3xl p-6">
+      <div className="mb-1 text-center text-3xl">🗂️</div>
+      <h2 className="mb-1 text-center text-xl font-bold">اختارا تصنيفًا</h2>
+      <p className="mb-5 text-center text-sm text-white/60">
+        ستظهر كلمة عشوائية من التصنيف، وتحاولان حلّها معًا كفريق.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => onPick(cat)}
+            className="flex items-center gap-2 rounded-2xl border border-white/12 bg-white/5 p-3 text-right font-bold transition-all hover:-translate-y-0.5 hover:border-fuchsia-400 hover:bg-fuchsia-500/15"
+          >
+            <span className="text-2xl">{cat.emoji}</span>
+            <span>{cat.name}</span>
+          </button>
+        ))}
+      </div>
+      <p className="mt-4 text-center text-xs text-white/40">
+        يمكن لأيٍّ منكما اختيار التصنيف.
+      </p>
     </div>
   );
 }

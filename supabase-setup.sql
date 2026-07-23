@@ -24,6 +24,7 @@ create table if not exists public.games (
 -- 1b) Columns added for game modes + versus play (safe on an existing table).
 alter table public.games
   add column if not exists mode        text    not null default 'coop',
+  add column if not exists category    text,
   add column if not exists word_for_a  text,
   add column if not exists word_for_b  text,
   add column if not exists guessed_a   text[]  not null default '{}',

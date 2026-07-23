@@ -2,15 +2,22 @@
 
 A real-time, two-player Arabic Hangman game built for playing together across
 any distance. One person creates a room and shares the link; the other joins.
-There's a beautiful on-screen Arabic keyboard, live chat, and two ways to play:
+There's a beautiful on-screen Arabic keyboard, live chat, and three ways to play:
 
-- **🤝 تعاوني (Co-op):** one player secretly picks a word, the other guesses it
-  letter by letter. Roles swap each round.
+- **🤝 تعاوني (Together):** you both team up to solve a **random word from a
+  category you pick** (animals, fruits, countries, …). Neither of you knows it —
+  you share one board and guess together.
+- **✍️ تبادلي (Turn-based):** one player secretly picks a word, the other guesses
+  it letter by letter. Roles swap each round.
 - **⚔️ تنافسي (Versus):** each of you picks a word for the *other*, then you both
   race to solve your word at the same time. Whoever solves with the **fewest
   mistakes wins**.
 
 Plus a built-in **live chat** so you can talk while you play. ❤️
+
+Want to add or change the words? They live in
+[`lib/words.ts`](./lib/words.ts) — edit the lists (about 20 words per category)
+and push; Vercel redeploys automatically.
 
 - **Frontend:** Next.js (React) → hosted on **Vercel**
 - **Backend:** **Supabase** (Postgres + Realtime) — keeps both screens in sync
