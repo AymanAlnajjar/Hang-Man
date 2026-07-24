@@ -1,11 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getPlayerId } from "@/lib/player";
 import { normalizeArabic } from "@/lib/arabic";
 import {
+  CELLS,
   GRID_SIZE,
   MIN_WORD,
   ROUND_DURATION,
@@ -49,10 +57,13 @@ export default function WordGridRoom() {
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [selection, setSelection] = useState<number[]>([]);
+  const [dragging, setDragging] = useState(false);
   const [flash, setFlash] = useState<{ msg: string; ok: boolean } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [boardW, setBoardW] = useState(320);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const selectionRef = useRef<number[]>([]);
   const claimedRef = useRef(false);
   const roundEndedRef = useRef(false);
   const advancingRef = useRef(false);
@@ -229,46 +240,87 @@ export default function WordGridRoom() {
     return { x: c * step + cell / 2, y: r * step + cell / 2 };
   };
 
-  // ---- Actions -------------------------------------------------------------
-  const tapTile = (i: number) => {
+  // Keep a ref in sync so the pointer-up handler reads the final path reliably.
+  useEffect(() => {
+    selectionRef.current = selection;
+  }, [selection]);
+
+  // ---- Swipe tracing -------------------------------------------------------
+  const tileAtPointer = (e: ReactPointerEvent): number | null => {
+    const el = boardRef.current;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    const rad = cell * 0.52;
+    for (let i = 0; i < CELLS; i++) {
+      const c = center(i);
+      const dx = x - c.x;
+      const dy = y - c.y;
+      if (dx * dx + dy * dy <= rad * rad) return i;
+    }
+    return null;
+  };
+
+  const commitWord = useCallback(
+    async (path: number[]) => {
+      if (!game || !grid || !active || path.length < MIN_WORD) return;
+      const res = checkPath(grid, path, myFound);
+      if (!res.ok) {
+        setFlash({
+          msg:
+            res.reason === "duplicate"
+              ? "وجدتها من قبل"
+              : res.reason === "short"
+              ? `أقل شيء ${MIN_WORD} أحرف`
+              : "ليست كلمة",
+          ok: false,
+        });
+        return;
+      }
+      const word = normalizeArabic(pathToWord(grid, path));
+      const next = [...myFound, word];
+      setFlash({ msg: `✓ ${word} +${wordScore(word)}`, ok: true });
+      setGame({ ...game, ...(isA ? { found_a: next } : { found_b: next }) });
+      await supabase
+        .from("boxes_games")
+        .update(isA ? { found_a: next } : { found_b: next })
+        .eq("id", code);
+    },
+    [game, grid, active, myFound, isA, code]
+  );
+
+  const onPointerDown = (e: ReactPointerEvent) => {
     if (!active) return;
+    const i = tileAtPointer(e);
+    if (i == null) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    setDragging(true);
+    setSelection([i]);
+  };
+
+  const onPointerMove = (e: ReactPointerEvent) => {
+    if (!dragging || !active) return;
+    const i = tileAtPointer(e);
+    if (i == null) return;
     setSelection((sel) => {
       if (sel.length === 0) return [i];
       const last = sel[sel.length - 1];
-      if (i === last) return sel.slice(0, -1); // tap last again → step back
-      if (sel.includes(i)) return sel; // already used elsewhere → ignore
+      if (i === last) return sel;
+      if (sel.length >= 2 && i === sel[sel.length - 2]) return sel.slice(0, -1);
+      if (sel.includes(i)) return sel;
       if (areAdjacent(last, i)) return [...sel, i];
-      return [i]; // not adjacent → start a new path here
+      return sel;
     });
   };
 
-  const submit = useCallback(async () => {
-    if (!game || !grid || !active) return;
-    if (selection.length < MIN_WORD) return;
-    const res = checkPath(grid, selection, myFound);
-    if (!res.ok) {
-      setFlash({
-        msg:
-          res.reason === "duplicate"
-            ? "وجدتها من قبل"
-            : res.reason === "short"
-            ? `أقل شيء ${MIN_WORD} أحرف`
-            : "ليست كلمة",
-        ok: false,
-      });
-      setSelection([]);
-      return;
-    }
-    const word = normalizeArabic(pathToWord(grid, selection));
-    const next = [...myFound, word];
-    setFlash({ msg: `✓ ${word} +${wordScore(word)}`, ok: true });
+  const onPointerUp = () => {
+    if (!dragging) return;
+    setDragging(false);
+    const path = selectionRef.current;
     setSelection([]);
-    setGame({ ...game, ...(isA ? { found_a: next } : { found_b: next }) });
-    await supabase
-      .from("boxes_games")
-      .update(isA ? { found_a: next } : { found_b: next })
-      .eq("id", code);
-  }, [game, grid, active, selection, myFound, isA, code]);
+    commitWord(path);
+  };
 
   useEffect(() => {
     if (!flash) return;
@@ -463,7 +515,15 @@ export default function WordGridRoom() {
       {/* The board */}
       {bothPresent && grid && active && (
         <div ref={wrapRef} className="mt-2 flex justify-center">
-          <div className="relative" style={{ width: boardW, height: boardW }}>
+          <div
+            ref={boardRef}
+            className="relative touch-none select-none"
+            style={{ width: boardW, height: boardW }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+          >
             {/* connectors */}
             <svg
               className="pointer-events-none absolute inset-0"
@@ -492,68 +552,54 @@ export default function WordGridRoom() {
               })}
             </svg>
 
-            {/* tiles */}
+            {/* tiles (visual only — the board handles pointer tracing) */}
             {grid.map((ch, i) => {
               const p = center(i);
               const sel = selection.includes(i);
-              const order = selection.indexOf(i);
+              const isLast = selection[selection.length - 1] === i;
               return (
-                <button
+                <div
                   key={i}
-                  onClick={() => tapTile(i)}
-                  disabled={!active}
                   className="absolute grid place-items-center rounded-full font-bold shadow-md transition-colors"
                   style={{
                     width: cell,
                     height: cell,
                     left: p.x,
                     top: p.y,
-                    transform: "translate(-50%, -50%)",
+                    transform: `translate(-50%, -50%)${sel ? " scale(1.06)" : ""}`,
                     fontSize: cell * 0.42,
                     background: sel ? "#14b8a6" : "#f8fafc",
                     color: sel ? "#ffffff" : "#1e1b2e",
                     zIndex: sel ? 2 : 1,
-                    outline: order === selection.length - 1 && sel ? "3px solid #99f6e4" : "none",
+                    pointerEvents: "none",
+                    outline: isLast && sel ? "3px solid #99f6e4" : "none",
                   }}
                 >
                   {ch}
-                </button>
+                </div>
               );
             })}
           </div>
         </div>
       )}
 
-      {/* Current word + submit */}
+      {/* Current word (updates live as you swipe) */}
       {bothPresent && active && (
         <div className="mt-3">
           <div
             dir="rtl"
-            className="mb-2 flex min-h-12 items-center justify-center rounded-2xl bg-black/25 px-3 text-2xl font-bold"
+            className={[
+              "mb-1 flex min-h-14 items-center justify-center rounded-2xl px-3 text-3xl font-bold transition-colors",
+              dragging ? "bg-teal-500/20 text-teal-100" : "bg-black/25",
+            ].join(" ")}
           >
             {currentWord || (
               <span className="text-sm font-normal text-white/30">
-                مرّر على الحروف المتجاورة ({MIN_WORD} فأكثر)
+                مرّر إصبعك على الحروف المتجاورة، وارفعه للتأكيد ({MIN_WORD}+)
               </span>
             )}
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSelection([])}
-              disabled={selection.length === 0}
-              className="btn-ghost flex-1 rounded-2xl py-3 font-bold disabled:opacity-40"
-            >
-              مسح
-            </button>
-            <button
-              onClick={submit}
-              disabled={selection.length < MIN_WORD}
-              className="btn-primary flex-[2] rounded-2xl py-3 font-bold disabled:opacity-40"
-            >
-              تأكيد
-            </button>
-          </div>
-          <div className="mt-1 h-5 text-center text-sm">
+          <div className="h-5 text-center text-sm">
             {flash && (
               <span className={flash.ok ? "text-emerald-300" : "text-rose-300"}>
                 {flash.msg}
