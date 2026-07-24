@@ -7,6 +7,17 @@ import { getPlayerId } from "@/lib/player";
 import { normalizeArabic } from "@/lib/arabic";
 import Chat from "@/components/Chat";
 
+// A lenient canonical key for matching two words in Mind Meld: on top of the
+// usual normalization it drops spaces, treats ة/ه the same, and ignores a
+// leading definite article — so "قلب" and "القلب", "قطة" and "قطه" all match.
+function meldKey(word: string): string {
+  let w = normalizeArabic(word)
+    .replace(/\s+/g, "")
+    .replace(/ة/g, "ه");
+  if (w.startsWith("ال") && w.length > 3) w = w.slice(2);
+  return w;
+}
+
 type MeldEntry = { round: number; a: string; b: string };
 type MeldGame = {
   id: string;
@@ -128,8 +139,7 @@ export default function MeldRoom() {
   const iSubmitted = !!myWord;
   const bothSubmitted = !!game?.word_a && !!game?.word_b;
   const matched =
-    bothSubmitted &&
-    normalizeArabic(game!.word_a!) === normalizeArabic(game!.word_b!);
+    bothSubmitted && meldKey(game!.word_a!) === meldKey(game!.word_b!);
 
   // ---- Actions -------------------------------------------------------------
   const submitWord = useCallback(async () => {
