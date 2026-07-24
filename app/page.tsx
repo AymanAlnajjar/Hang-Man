@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@/lib/auth";
+import InvitesBanner from "@/components/InvitesBanner";
 
 const GAMES = [
   {
@@ -41,13 +43,38 @@ const GAMES = [
 ];
 
 export default function Hub() {
+  const { user, profile } = useAuth();
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 pt-safe pb-safe">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-6 pt-safe pb-safe">
+      {/* Account bar */}
+      <div className="mb-4 mt-1 flex items-center justify-between">
+        {user ? (
+          <Link
+            href="/friends"
+            className="glass rounded-full px-4 py-2 text-sm font-bold hover:border-fuchsia-400/60"
+          >
+            👥 الأصدقاء
+          </Link>
+        ) : (
+          <Link
+            href="/account"
+            className="glass rounded-full px-4 py-2 text-sm font-bold hover:border-fuchsia-400/60"
+          >
+            🔐 تسجيل الدخول
+          </Link>
+        )}
+        <Link href="/account" className="text-sm text-white/60 hover:text-white">
+          {user ? `@${profile?.username ?? "حسابي"}` : "بدون حساب"}
+        </Link>
+      </div>
+
+      <InvitesBanner />
+
       <div className="mb-8 text-center">
         <div className="mb-3 text-5xl animate-floaty">🎮</div>
         <h1 className="text-4xl font-extrabold tracking-tight">ألعاب الكلمات</h1>
         <p className="mt-2 text-white/60">
-          اختاروا لعبة، أنشئوا غرفة، وشاركوا الرابط — والعبوا معًا عن بُعد. ❤️
+          اختاروا لعبة، أنشئوا غرفة، وادعُوا صديقكم — أو شاركوا الرابط. ❤️
         </p>
       </div>
 

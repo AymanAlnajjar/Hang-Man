@@ -217,4 +217,92 @@ drop policy if exists "wordle public access" on public.wordle_games;
 create policy "wordle public access"
   on public.wordle_games for all using (true) with check (true);
 
+-- ============================================================================
+-- 6) Accounts, friends, and game invites (optional social layer).
+--    Uses Supabase Auth. IMPORTANT: in the dashboard, turn OFF email
+--    confirmation for instant sign-up:
+--    Authentication -> Providers -> Email -> disable "Confirm email".
+-- ============================================================================
+
+-- Profiles: one per auth user, with a unique username to find friends by.
+create table if not exists public.profiles (
+  id           uuid primary key references auth.users(id) on delete cascade,
+  username     text unique not null,
+  display_name text,
+  created_at   timestamptz not null default now()
+);
+
+-- Friend requests / friendships.
+create table if not exists public.friendships (
+  id         bigint generated always as identity primary key,
+  requester  uuid not null references auth.users(id) on delete cascade,
+  addressee  uuid not null references auth.users(id) on delete cascade,
+  status     text not null default 'pending',  -- pending | accepted
+  created_at timestamptz not null default now(),
+  unique (requester, addressee)
+);
+create index if not exists friendships_addressee_idx on public.friendships (addressee);
+create index if not exists friendships_requester_idx on public.friendships (requester);
+
+-- Game invites: "come play this room".
+create table if not exists public.invites (
+  id         bigint generated always as identity primary key,
+  from_user  uuid not null references auth.users(id) on delete cascade,
+  to_user    uuid not null references auth.users(id) on delete cascade,
+  game_type  text not null,                      -- hangman|wordbox|meld|stop|wordle
+  room_code  text not null,
+  status     text not null default 'pending',    -- pending | accepted | declined
+  created_at timestamptz not null default now()
+);
+create index if not exists invites_to_idx on public.invites (to_user, status);
+
+-- Realtime for live friend requests + invites.
+do $$
+declare t text;
+begin
+  foreach t in array array['friendships', 'invites'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
+
+-- RLS: these tables are tied to real accounts (auth.uid()).
+alter table public.profiles    enable row level security;
+alter table public.friendships enable row level security;
+alter table public.invites     enable row level security;
+
+drop policy if exists "profiles readable" on public.profiles;
+create policy "profiles readable" on public.profiles for select using (true);
+drop policy if exists "insert own profile" on public.profiles;
+create policy "insert own profile" on public.profiles for insert with check (auth.uid() = id);
+drop policy if exists "update own profile" on public.profiles;
+create policy "update own profile" on public.profiles for update using (auth.uid() = id);
+
+drop policy if exists "friend rows visible" on public.friendships;
+create policy "friend rows visible" on public.friendships for select
+  using (auth.uid() = requester or auth.uid() = addressee);
+drop policy if exists "send request" on public.friendships;
+create policy "send request" on public.friendships for insert
+  with check (auth.uid() = requester);
+drop policy if exists "respond request" on public.friendships;
+create policy "respond request" on public.friendships for update
+  using (auth.uid() = addressee or auth.uid() = requester);
+drop policy if exists "remove friend" on public.friendships;
+create policy "remove friend" on public.friendships for delete
+  using (auth.uid() = requester or auth.uid() = addressee);
+
+drop policy if exists "invite rows visible" on public.invites;
+create policy "invite rows visible" on public.invites for select
+  using (auth.uid() = from_user or auth.uid() = to_user);
+drop policy if exists "send invite" on public.invites;
+create policy "send invite" on public.invites for insert
+  with check (auth.uid() = from_user);
+drop policy if exists "respond invite" on public.invites;
+create policy "respond invite" on public.invites for update
+  using (auth.uid() = to_user or auth.uid() = from_user);
+
 -- Done. Your app needs the Project URL and anon key (Settings -> API).

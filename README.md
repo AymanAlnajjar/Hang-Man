@@ -101,11 +101,21 @@ both with GitHub or Google).
    "Success". (This script is safe to re-run any time — if you already set the
    game up before the Versus + chat update, just run it again to add the new
    columns and the chat table. No data is lost.)
-4. Go to **Project Settings** (gear icon) → **API**. Copy these two values:
+4. **(For accounts & friends)** In the sidebar open **Authentication → Providers
+   → Email** and **turn OFF "Confirm email"** so sign-up is instant (no
+   confirmation email needed). If you skip this, accounts still work but each new
+   user must click a link in their email before signing in.
+5. Go to **Project Settings** (gear icon) → **API**. Copy these two values:
    - **Project URL** (looks like `https://abcd1234.supabase.co`)
    - **anon public** key (a long string under "Project API keys")
 
 Keep these two values handy for Step 3.
+
+**Accounts & friends (optional):** the platform works fully without signing in
+(rooms are shared by link). If you sign up (top-left on the home screen), you get
+a username, can add each other as friends, and invite each other straight into a
+game — no link needed. Accounts are a convenience layer; the games themselves
+still use anonymous room codes.
 
 ### Step 2 — Put the code on GitHub
 
