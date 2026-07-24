@@ -72,6 +72,26 @@ create table if not exists public.meld_games (
   updated_at  timestamptz not null default now()
 );
 
+-- 1e) Categories game ("اسم حيوان جماد بلاد") rooms — a random letter, both
+--     race to fill categories with words starting with it.
+create table if not exists public.stop_games (
+  id          text primary key,            -- the room code
+  player_a    text,
+  player_b    text,
+  status      text    not null default 'waiting',  -- waiting|playing|reveal
+  letter      text,                         -- the round's letter
+  round       int     not null default 1,
+  answers_a   jsonb   not null default '{}'::jsonb,
+  answers_b   jsonb   not null default '{}'::jsonb,
+  stopper     text,                         -- who ended the round (player id or 'time')
+  started_at  timestamptz,
+  duration    int     not null default 120,
+  score_a     int     not null default 0,   -- cumulative
+  score_b     int     not null default 0,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
 -- 2) Live chat messages, one row per message. Shared by every game on the
 --    platform, so game_id is just the room code (no foreign key).
 create table if not exists public.messages (
@@ -112,12 +132,17 @@ create trigger meld_touch_updated_at
   before update on public.meld_games
   for each row execute function public.touch_updated_at();
 
+drop trigger if exists stop_touch_updated_at on public.stop_games;
+create trigger stop_touch_updated_at
+  before update on public.stop_games
+  for each row execute function public.touch_updated_at();
+
 -- 4) Turn on Realtime for all tables so screens sync live.
 --    Wrapped so re-running this script doesn't error if already added.
 do $$
 declare t text;
 begin
-  foreach t in array array['games', 'messages', 'boxes_games', 'meld_games'] loop
+  foreach t in array array['games', 'messages', 'boxes_games', 'meld_games', 'stop_games'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
@@ -134,6 +159,7 @@ alter table public.games       enable row level security;
 alter table public.messages    enable row level security;
 alter table public.boxes_games enable row level security;
 alter table public.meld_games  enable row level security;
+alter table public.stop_games  enable row level security;
 
 drop policy if exists "games public access" on public.games;
 create policy "games public access"
@@ -150,5 +176,9 @@ create policy "boxes public access"
 drop policy if exists "meld public access" on public.meld_games;
 create policy "meld public access"
   on public.meld_games for all using (true) with check (true);
+
+drop policy if exists "stop public access" on public.stop_games;
+create policy "stop public access"
+  on public.stop_games for all using (true) with check (true);
 
 -- Done. Your app needs the Project URL and anon key (Settings -> API).

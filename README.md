@@ -15,6 +15,14 @@ On-screen Arabic keyboard, three ways to play:
 - **⚔️ تنافسي (Versus):** each picks a word for the *other*; race to solve with
   the **fewest mistakes**.
 
+### 🅰️ اسم حيوان جماد (Categories / Stop) — `/stop`
+A random Arabic letter appears and you both race to fill five categories —
+اسم، حيوان، نبات، جماد، بلاد — with words starting with it. First to press **قف**
+freezes the round for both. Scoring: a valid unique answer = 10, a valid answer
+your partner also wrote = 5, empty/wrong-letter = 0. Cumulative across rounds;
+letter-start is auto-checked, category correctness is on the honour system (chat
+it out!). Categories and letter pool live in [`lib/stop.ts`](./lib/stop.ts).
+
 ### 🧠 توارد الأفكار (Mind Meld) — `/meld`
 A cooperative convergence game: each round you **both secretly type a word**;
 when both submit, the words are revealed together. If they don't match, you each
