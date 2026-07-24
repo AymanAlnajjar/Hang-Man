@@ -27,7 +27,8 @@ each **3–9 letters** (longer words can't be traced on a 5×5 board, so they're
 excluded to keep the list focused on findable words). A small curated list in
 [`lib/dictionary.ts`](./lib/dictionary.ts) loads instantly, and the big list
 ([`public/ar-words.txt`](./public/ar-words.txt), ~340 KB) is fetched once when a
-Word-Grid game starts. Grid generation and scoring live in
+Word-Grid game starts. The definite article is handled generally: **`ال` + any
+known base word** also counts (e.g. `نمر` → `النمر`), scored by its own length. Grid generation and scoring live in
 [`lib/grid.ts`](./lib/grid.ts); Hangman categories live in
 [`lib/words.ts`](./lib/words.ts).
 

@@ -52,7 +52,15 @@ for (const cat of CATEGORIES) for (const w of cat.words) addWord(w);
 for (const w of EXTRA) addWord(w);
 
 export function isWord(word: string): boolean {
-  return DICTIONARY.has(normalizeArabic(word));
+  const w = normalizeArabic(word);
+  if (DICTIONARY.has(w)) return true;
+  // Definite-article forms also count: "ال" + a known base word.
+  // e.g. نمر (base) → النمر, شمس → الشمس. Scored by their own (longer) length.
+  if (w.startsWith("ال")) {
+    const base = w.slice(2);
+    if (base.length >= 3 && DICTIONARY.has(base)) return true;
+  }
+  return false;
 }
 
 export function plantableWords(): string[] {
