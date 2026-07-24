@@ -32,15 +32,35 @@ alter table public.games
   add column if not exists a_done      boolean not null default false,
   add column if not exists b_done      boolean not null default false;
 
--- 2) Live chat messages, one row per message.
+-- 1c) Word-box game ("تكوين") rooms — a separate game on the same platform.
+create table if not exists public.boxes_games (
+  id          text primary key,            -- the room code
+  player_a    text,
+  player_b    text,
+  status      text    not null default 'waiting',  -- waiting|playing|finished
+  puzzle_id   text,                         -- which letter puzzle this round
+  duration    int     not null default 90,  -- seconds per round
+  started_at  timestamptz,                  -- when the round clock started
+  found_a     text[]  not null default '{}',-- words found by player A
+  found_b     text[]  not null default '{}',-- words found by player B
+  round       int     not null default 1,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+-- 2) Live chat messages, one row per message. Shared by every game on the
+--    platform, so game_id is just the room code (no foreign key).
 create table if not exists public.messages (
   id          bigint generated always as identity primary key,
-  game_id     text not null references public.games(id) on delete cascade,
+  game_id     text not null,               -- room code (hangman or word-box)
   sender      text not null,               -- the sender's anonymous id
   sender_role text,                         -- 'a' or 'b' (for colouring bubbles)
   body        text not null,
   created_at  timestamptz not null default now()
 );
+-- If an older setup created this with a foreign key to games, drop it so chat
+-- works for word-box rooms too.
+alter table public.messages drop constraint if exists messages_game_id_fkey;
 create index if not exists messages_game_idx
   on public.messages (game_id, created_at);
 
@@ -58,29 +78,32 @@ create trigger games_touch_updated_at
   before update on public.games
   for each row execute function public.touch_updated_at();
 
--- 4) Turn on Realtime for both tables so screens sync live.
+drop trigger if exists boxes_touch_updated_at on public.boxes_games;
+create trigger boxes_touch_updated_at
+  before update on public.boxes_games
+  for each row execute function public.touch_updated_at();
+
+-- 4) Turn on Realtime for all tables so screens sync live.
 --    Wrapped so re-running this script doesn't error if already added.
 do $$
+declare t text;
 begin
-  if not exists (
-    select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'games'
-  ) then
-    alter publication supabase_realtime add table public.games;
-  end if;
-  if not exists (
-    select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'
-  ) then
-    alter publication supabase_realtime add table public.messages;
-  end if;
+  foreach t in array array['games', 'messages', 'boxes_games'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
 end $$;
 
 -- 5) Row Level Security.
 --    This is a private game guarded by a hard-to-guess room code, so we allow
 --    the public "anon" key to read/write freely. Enough for a personal game.
-alter table public.games    enable row level security;
-alter table public.messages enable row level security;
+alter table public.games       enable row level security;
+alter table public.messages    enable row level security;
+alter table public.boxes_games enable row level security;
 
 drop policy if exists "games public access" on public.games;
 create policy "games public access"
@@ -89,5 +112,9 @@ create policy "games public access"
 drop policy if exists "messages public access" on public.messages;
 create policy "messages public access"
   on public.messages for all using (true) with check (true);
+
+drop policy if exists "boxes public access" on public.boxes_games;
+create policy "boxes public access"
+  on public.boxes_games for all using (true) with check (true);
 
 -- Done. Your app needs the Project URL and anon key (Settings -> API).

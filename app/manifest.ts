@@ -3,9 +3,9 @@ import type { MetadataRoute } from "next";
 // Enables "Add to Home Screen" so the game opens full-screen like a native app.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "لعبة المشنقة",
-    short_name: "المشنقة",
-    description: "لعبة المشنقة العربية للعب بين شخصين عن بُعد",
+    name: "ألعاب الكلمات",
+    short_name: "ألعاب",
+    description: "منصة ألعاب كلمات عربية للعب بين شخصين عن بُعد",
     lang: "ar",
     dir: "rtl",
     start_url: "/",

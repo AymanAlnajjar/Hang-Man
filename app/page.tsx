@@ -1,173 +1,64 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { getPlayerId } from "@/lib/player";
-import { makeRoomCode, type GameMode } from "@/lib/game";
+import Link from "next/link";
 
-export default function Home() {
-  const router = useRouter();
-  const [joinCode, setJoinCode] = useState("");
-  const [mode, setMode] = useState<GameMode>("together");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const GAMES = [
+  {
+    href: "/hangman",
+    emoji: "🎯",
+    name: "المشنقة",
+    desc: "خمّنا الكلمة حرفًا حرفًا قبل أن يكتمل الرسم.",
+    tag: "٣ أنماط",
+  },
+  {
+    href: "/wordbox",
+    emoji: "🔤",
+    name: "تكوين الكلمات",
+    desc: "كوّنا أكبر عدد من الكلمات من الحروف قبل انتهاء الوقت.",
+    tag: "تنافسي",
+  },
+];
 
-  async function createGame() {
-    setError(null);
-    if (!isSupabaseConfigured) {
-      setError("لم يتم ربط قاعدة البيانات بعد. راجع ملف README لإعداد Supabase.");
-      return;
-    }
-    setBusy(true);
-    const me = getPlayerId();
-    // Try a few codes in case of an (unlikely) collision.
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const code = makeRoomCode();
-      const { error } = await supabase.from("games").insert({
-        id: code,
-        player_a: me,
-        mode,
-        guessed: [],
-        status: "waiting",
-        round: 1,
-      });
-      if (!error) {
-        router.push(`/game/${code}`);
-        return;
-      }
-    }
-    setBusy(false);
-    setError("تعذّر إنشاء اللعبة. حاول مرة أخرى.");
-  }
-
-  function joinGame() {
-    setError(null);
-    const code = joinCode.trim().toUpperCase();
-    if (!code) {
-      setError("أدخل رمز الغرفة.");
-      return;
-    }
-    router.push(`/game/${code}`);
-  }
-
+export default function Hub() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-5 pt-safe pb-safe">
-      <div className="mb-7 text-center">
-        <div className="mb-3 text-5xl animate-floaty">🎯</div>
-        <h1 className="text-4xl font-extrabold tracking-tight">لعبة المشنقة</h1>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 pt-safe pb-safe">
+      <div className="mb-8 text-center">
+        <div className="mb-3 text-5xl animate-floaty">🎮</div>
+        <h1 className="text-4xl font-extrabold tracking-tight">ألعاب الكلمات</h1>
         <p className="mt-2 text-white/60">
-          العبها مع شريكك أينما كنتما — واختر طريقة اللعب.
+          اختاروا لعبة، أنشئوا غرفة، وشاركوا الرابط — والعبوا معًا عن بُعد. ❤️
         </p>
       </div>
 
-      <div className="glass w-full rounded-3xl p-6">
-        {/* Mode picker */}
-        <div className="mb-4 flex flex-col gap-2">
-          <ModeCard
-            active={mode === "together"}
-            onClick={() => setMode("together")}
-            icon="🤝"
-            title="تعاوني"
-            desc="نحلّ كلمة عشوائية من تصنيف تختارانه — معًا كفريق"
-          />
-          <ModeCard
-            active={mode === "coop"}
-            onClick={() => setMode("coop")}
-            icon="✍️"
-            title="تبادلي"
-            desc="واحد يختار الكلمة، والآخر يخمّنها — ثم تتبادلان"
-          />
-          <ModeCard
-            active={mode === "versus"}
-            onClick={() => setMode("versus")}
-            icon="⚔️"
-            title="تنافسي"
-            desc="كلٌّ يختار كلمة للآخر — ومن يحلّها بأقل أخطاء يفوز"
-          />
-        </div>
-
-        <button
-          onClick={createGame}
-          disabled={busy}
-          className="btn-primary w-full rounded-2xl py-4 text-lg font-bold text-white"
-        >
-          {busy ? "جارٍ الإنشاء…" : "➕ إنشاء لعبة جديدة"}
-        </button>
-
-        <div className="my-5 flex items-center gap-3 text-white/40">
-          <span className="h-px flex-1 bg-white/15" />
-          <span className="text-sm">أو</span>
-          <span className="h-px flex-1 bg-white/15" />
-        </div>
-
-        <label className="mb-2 block text-sm text-white/70">
-          الانضمام إلى لعبة برمز الغرفة
-        </label>
-        <div className="flex gap-2">
-          <input
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === "Enter" && joinGame()}
-            placeholder="مثال: K7QM2"
-            dir="ltr"
-            maxLength={8}
-            enterKeyHint="go"
-            className="input-field w-full rounded-2xl px-4 py-3 text-center text-lg font-bold tracking-widest text-white placeholder:text-white/30"
-          />
-          <button
-            onClick={joinGame}
-            className="btn-ghost shrink-0 rounded-2xl px-5 font-bold text-white"
+      <div className="flex flex-col gap-3">
+        {GAMES.map((g) => (
+          <Link
+            key={g.href}
+            href={g.href}
+            className="glass group flex items-center gap-4 rounded-3xl p-5 transition-all hover:-translate-y-0.5 hover:border-fuchsia-400/60"
           >
-            دخول
-          </button>
-        </div>
-
-        {error && (
-          <p className="mt-4 rounded-xl bg-rose-500/15 px-4 py-2 text-sm text-rose-200">
-            {error}
-          </p>
-        )}
+            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-white/5 text-4xl">
+              {g.emoji}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold">{g.name}</h2>
+                <span className="rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[11px] font-bold text-fuchsia-200">
+                  {g.tag}
+                </span>
+              </div>
+              <p className="mt-1 text-sm leading-snug text-white/55">{g.desc}</p>
+            </div>
+            <div className="shrink-0 text-2xl text-white/30 transition-transform group-hover:-translate-x-1">
+              ‹
+            </div>
+          </Link>
+        ))}
       </div>
 
-      <p className="mt-6 text-center text-xs text-white/40">
-        أنشئ لعبة، أرسل الرابط لشريكك، والعبا معًا في الوقت نفسه ❤️
+      <p className="mt-8 text-center text-xs text-white/40">
+        المزيد من الألعاب قريبًا…
       </p>
     </main>
-  );
-}
-
-function ModeCard({
-  active,
-  onClick,
-  icon,
-  title,
-  desc,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: string;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={[
-        "flex items-center gap-3 rounded-2xl border p-3 text-right transition-all",
-        active
-          ? "border-fuchsia-400 bg-fuchsia-500/15 shadow-lg shadow-fuchsia-500/10"
-          : "border-white/12 bg-white/5 hover:bg-white/10",
-      ].join(" ")}
-    >
-      <div className="shrink-0 text-2xl">{icon}</div>
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 font-bold">
-          {title}
-          {active && <span className="text-fuchsia-300">✓</span>}
-        </div>
-        <div className="text-[11px] leading-tight text-white/55">{desc}</div>
-      </div>
-    </button>
   );
 }

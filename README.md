@@ -1,23 +1,27 @@
-# 🎯 لعبة المشنقة — Arabic Hangman (2-player, online)
+# 🎮 ألعاب الكلمات — Arabic Word Games (2-player, online)
 
-A real-time, two-player Arabic Hangman game built for playing together across
-any distance. One person creates a room and shares the link; the other joins.
-There's a beautiful on-screen Arabic keyboard, live chat, and three ways to play:
+A tiny real-time two-player **word games platform** for playing together across
+any distance. Open the app, pick a game, create a room, and share the link — your
+partner joins the same room and you play live. Every game has a built-in **live
+chat**. ❤️
 
-- **🤝 تعاوني (Together):** you both team up to solve a **random word from a
-  category you pick** (animals, fruits, countries, …). Neither of you knows it —
-  you share one board and guess together.
-- **✍️ تبادلي (Turn-based):** one player secretly picks a word, the other guesses
-  it letter by letter. Roles swap each round.
-- **⚔️ تنافسي (Versus):** each of you picks a word for the *other*, then you both
-  race to solve your word at the same time. Whoever solves with the **fewest
-  mistakes wins**.
+The home screen (`/`) lets you pick a game:
 
-Plus a built-in **live chat** so you can talk while you play. ❤️
+### 🎯 المشنقة (Hangman) — `/hangman`
+On-screen Arabic keyboard, three ways to play:
+- **🤝 تعاوني (Together):** team up to solve a **random word from a category you
+  pick** (animals, fruits, countries, …). Neither of you knows it.
+- **✍️ تبادلي (Turn-based):** one picks a word, the other guesses; roles swap.
+- **⚔️ تنافسي (Versus):** each picks a word for the *other*; race to solve with
+  the **fewest mistakes**.
 
-Want to add or change the words? They live in
-[`lib/words.ts`](./lib/words.ts) — edit the lists (about 20 words per category)
-and push; Vercel redeploys automatically.
+### 🔤 تكوين الكلمات (Word Box) — `/wordbox`
+You both get the **same box of Arabic letters** and race a timer to form as many
+valid words as possible. Longer words score more — **highest score wins**.
+
+Want to tweak the content? Hangman word categories live in
+[`lib/words.ts`](./lib/words.ts); Word-Box letter puzzles live in
+[`lib/boxes.ts`](./lib/boxes.ts). Edit and push — Vercel redeploys automatically.
 
 - **Frontend:** Next.js (React) → hosted on **Vercel**
 - **Backend:** **Supabase** (Postgres + Realtime) — keeps both screens in sync

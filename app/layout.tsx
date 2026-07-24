@@ -9,13 +9,13 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "المشنقة — لعبة الحروف",
-  description: "لعبة المشنقة العربية للعب بين شخصين عن بُعد",
+  title: "ألعاب الكلمات",
+  description: "منصة ألعاب كلمات عربية للعب بين شخصين عن بُعد — المشنقة وتكوين الكلمات",
   // Lets iOS open it full-screen when added to the home screen.
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "المشنقة",
+    title: "ألعاب الكلمات",
   },
 };
 
