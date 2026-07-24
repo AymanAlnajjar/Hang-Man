@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getPlayerId } from "@/lib/player";
 import { makeRoomCode } from "@/lib/game";
-import { BOX_DURATION } from "@/lib/boxes";
+import { ROUND_DURATION, MAX_ROUNDS } from "@/lib/grid";
 
 export default function WordBoxHome() {
   const router = useRouter();
@@ -28,7 +28,8 @@ export default function WordBoxHome() {
         id: code,
         player_a: me,
         status: "waiting",
-        duration: BOX_DURATION,
+        duration: ROUND_DURATION,
+        max_rounds: MAX_ROUNDS,
         round: 1,
       });
       if (!error) {
@@ -63,8 +64,8 @@ export default function WordBoxHome() {
         <div className="mb-3 text-5xl animate-floaty">🔤</div>
         <h1 className="text-4xl font-extrabold tracking-tight">تكوين الكلمات</h1>
         <p className="mt-2 text-white/60">
-          صندوق من الحروف نفسه لكليكما — كوّنا أكبر عدد من الكلمات قبل انتهاء
-          الوقت. صاحب أعلى نقاط يفوز!
+          شبكة حروف واحدة لكليكما — مرّرا على الحروف المتجاورة لتكوين الكلمات
+          (٣ أحرف فأكثر) خلال ٣ جولات. صاحب أعلى مجموع نقاط يفوز!
         </p>
       </div>
 

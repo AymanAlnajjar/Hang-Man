@@ -32,21 +32,30 @@ alter table public.games
   add column if not exists a_done      boolean not null default false,
   add column if not exists b_done      boolean not null default false;
 
--- 1c) Word-box game ("تكوين") rooms — a separate game on the same platform.
+-- 1c) Word-grid game ("تكوين") rooms — a Boggle/Ruzzle-style game on the same
+--     platform: a shared 5x5 letter grid, trace adjacent letters to form words.
 create table if not exists public.boxes_games (
   id          text primary key,            -- the room code
   player_a    text,
   player_b    text,
-  status      text    not null default 'waiting',  -- waiting|playing|finished
-  puzzle_id   text,                         -- which letter puzzle this round
-  duration    int     not null default 90,  -- seconds per round
+  status      text    not null default 'waiting',  -- waiting|playing|roundover|finished
+  puzzle_id   text,                         -- (legacy, unused)
+  grid        text,                         -- JSON array of 25 letters (shared board)
+  duration    int     not null default 120, -- seconds per round
   started_at  timestamptz,                  -- when the round clock started
-  found_a     text[]  not null default '{}',-- words found by player A
-  found_b     text[]  not null default '{}',-- words found by player B
+  found_a     text[]  not null default '{}',-- current-round words found by A
+  found_b     text[]  not null default '{}',-- current-round words found by B
   round       int     not null default 1,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+
+-- Columns added for the grid game (safe on an existing table).
+alter table public.boxes_games
+  add column if not exists grid       text,
+  add column if not exists score_a    int not null default 0,   -- cumulative
+  add column if not exists score_b    int not null default 0,   -- cumulative
+  add column if not exists max_rounds int not null default 3;
 
 -- 2) Live chat messages, one row per message. Shared by every game on the
 --    platform, so game_id is just the room code (no foreign key).
