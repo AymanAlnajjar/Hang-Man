@@ -55,7 +55,7 @@ export default function AccountPage() {
       });
       if (signErr) {
         setBusy(false);
-        setError(signErr.message);
+        setError(friendlyAuthError(signErr.message));
         return;
       }
       if (!data.session) {
@@ -197,6 +197,19 @@ export default function AccountPage() {
       </div>
     </main>
   );
+}
+
+function friendlyAuthError(m: string): string {
+  const s = m.toLowerCase();
+  if (s.includes("rate limit"))
+    return "تجاوزت حدّ إرسال البريد. أطفئ «تأكيد البريد» في إعدادات Supabase (Authentication → Providers → Email)، أو انتظر ساعة.";
+  if (s.includes("already") && s.includes("regist"))
+    return "هذا البريد مسجّل بالفعل — سجّل الدخول بدلًا من ذلك.";
+  if (s.includes("password"))
+    return "كلمة المرور قصيرة (٦ أحرف على الأقل).";
+  if (s.includes("valid email") || s.includes("invalid email"))
+    return "البريد الإلكتروني غير صحيح.";
+  return m;
 }
 
 function BackLink() {
