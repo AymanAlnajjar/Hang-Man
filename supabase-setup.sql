@@ -52,10 +52,16 @@ create table if not exists public.boxes_games (
 
 -- Columns added for the grid game (safe on an existing table).
 alter table public.boxes_games
-  add column if not exists grid       text,
-  add column if not exists score_a    int not null default 0,   -- cumulative
-  add column if not exists score_b    int not null default 0,   -- cumulative
-  add column if not exists max_rounds int not null default 3;
+  add column if not exists grid        text,
+  add column if not exists score_a     int not null default 0,   -- (legacy)
+  add column if not exists score_b     int not null default 0,   -- (legacy)
+  add column if not exists max_rounds  int not null default 3,
+  -- time-driven, synchronized rounds:
+  add column if not exists grids       jsonb,                     -- one grid per round
+  add column if not exists rounds_a    jsonb not null default '[]'::jsonb, -- words per round
+  add column if not exists rounds_b    jsonb not null default '[]'::jsonb,
+  add column if not exists play_secs   int not null default 90,   -- play time per round
+  add column if not exists reveal_secs int not null default 12;   -- reveal time per round
 
 -- 1d) Mind-meld game ("توارد الأفكار") rooms — both secretly type a word each
 --     round and try to converge on the same word.

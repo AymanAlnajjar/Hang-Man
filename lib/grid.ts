@@ -4,7 +4,9 @@ import { isWord, plantableWords } from "@/lib/dictionary";
 export const GRID_SIZE = 5; // 5x5 board
 export const CELLS = GRID_SIZE * GRID_SIZE;
 export const MIN_WORD = 3;
-export const ROUND_DURATION = 120; // seconds per round
+export const ROUND_DURATION = 120; // (legacy)
+export const PLAY_SECS = 90; // play time per round
+export const REVEAL_SECS = 12; // reveal time between rounds
 export const MAX_ROUNDS = 3;
 export const PLANT_TARGET = 9; // how many words to try to plant per grid
 
