@@ -128,13 +128,12 @@ export function checkPath(
   return { ok: true };
 }
 
-// Longer words score more (Ruzzle-like): 3→1, 4→2, 5→4, 6→6, 7+→8 per word...
-// kept simple and generous: points = letters, with a bonus for 5+ letters.
+// Points double with each extra letter: 3→2, 4→4, 5→8, 6→16, 7→32, and so on.
+// points = 2^(length - 2).
 export function wordScore(word: string): number {
   const len = normalizeArabic(word).replace(/ /g, "").length;
-  if (len >= 7) return len + 5;
-  if (len >= 5) return len + 2;
-  return len;
+  if (len < 3) return 0;
+  return Math.pow(2, len - 2);
 }
 
 export function totalScore(words: string[]): number {
