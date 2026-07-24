@@ -57,6 +57,21 @@ alter table public.boxes_games
   add column if not exists score_b    int not null default 0,   -- cumulative
   add column if not exists max_rounds int not null default 3;
 
+-- 1d) Mind-meld game ("توارد الأفكار") rooms — both secretly type a word each
+--     round and try to converge on the same word.
+create table if not exists public.meld_games (
+  id          text primary key,            -- the room code
+  player_a    text,
+  player_b    text,
+  status      text    not null default 'waiting',  -- waiting|playing
+  round       int     not null default 1,
+  word_a      text,                         -- A's word this round (null=not sent)
+  word_b      text,                         -- B's word this round
+  history     jsonb   not null default '[]'::jsonb, -- [{round,a,b}, ...]
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
 -- 2) Live chat messages, one row per message. Shared by every game on the
 --    platform, so game_id is just the room code (no foreign key).
 create table if not exists public.messages (
@@ -92,12 +107,17 @@ create trigger boxes_touch_updated_at
   before update on public.boxes_games
   for each row execute function public.touch_updated_at();
 
+drop trigger if exists meld_touch_updated_at on public.meld_games;
+create trigger meld_touch_updated_at
+  before update on public.meld_games
+  for each row execute function public.touch_updated_at();
+
 -- 4) Turn on Realtime for all tables so screens sync live.
 --    Wrapped so re-running this script doesn't error if already added.
 do $$
 declare t text;
 begin
-  foreach t in array array['games', 'messages', 'boxes_games'] loop
+  foreach t in array array['games', 'messages', 'boxes_games', 'meld_games'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
@@ -113,6 +133,7 @@ end $$;
 alter table public.games       enable row level security;
 alter table public.messages    enable row level security;
 alter table public.boxes_games enable row level security;
+alter table public.meld_games  enable row level security;
 
 drop policy if exists "games public access" on public.games;
 create policy "games public access"
@@ -125,5 +146,9 @@ create policy "messages public access"
 drop policy if exists "boxes public access" on public.boxes_games;
 create policy "boxes public access"
   on public.boxes_games for all using (true) with check (true);
+
+drop policy if exists "meld public access" on public.meld_games;
+create policy "meld public access"
+  on public.meld_games for all using (true) with check (true);
 
 -- Done. Your app needs the Project URL and anon key (Settings -> API).

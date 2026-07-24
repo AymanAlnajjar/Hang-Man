@@ -15,6 +15,12 @@ On-screen Arabic keyboard, three ways to play:
 - **⚔️ تنافسي (Versus):** each picks a word for the *other*; race to solve with
   the **fewest mistakes**.
 
+### 🧠 توارد الأفكار (Mind Meld) — `/meld`
+A cooperative convergence game: each round you **both secretly type a word**;
+when both submit, the words are revealed together. If they don't match, you each
+type a new word trying to find one *between* them — and you win the moment you
+both type the **same word**. Shows the full history of attempts.
+
 ### 🔤 تكوين الكلمات (Word Grid) — `/wordbox`
 A Boggle/Ruzzle-style game: you both share the **same 5×5 letter grid** and
 **trace paths through adjacent letters** (including diagonals) to form words of
