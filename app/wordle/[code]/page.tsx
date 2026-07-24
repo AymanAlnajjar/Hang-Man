@@ -54,8 +54,14 @@ function newTarget(len: number): string {
   );
 }
 
-const markBg = (m: Mark | null): string =>
-  m === "correct" ? "#15803d" : m === "present" ? "#b59f3b" : m === "absent" ? "#3f3f46" : "transparent";
+const MARK_COLORS: Record<Mark, { bg: string; fg: string }> = {
+  correct: { bg: "#16a34a", fg: "#ffffff" }, // vivid green
+  present: { bg: "#eab308", fg: "#3d2c00" }, // bright yellow, dark text
+  absent: { bg: "#3f3f46", fg: "#d4d4d8" }, // dark gray
+};
+const markBg = (m: Mark | null): string => (m ? MARK_COLORS[m].bg : "transparent");
+const markFg = (m: Mark | null): string => (m ? MARK_COLORS[m].fg : "#ffffff");
+const TILE = 52; // fixed tile size so rows never resize (fits narrow phones)
 
 export default function WordleRoom() {
   const params = useParams();
@@ -347,7 +353,7 @@ export default function WordleRoom() {
           </div>
 
           {/* Guess grid */}
-          <div className="mx-auto flex flex-col gap-1.5 py-2" style={{ maxWidth: 340 }}>
+          <div className="mx-auto flex flex-col gap-1.5 py-2">
             {Array.from({ length: maxGuesses }).map((_, row) => {
               const submitted = row < myGuesses.length;
               const isCurrent = !iDone && row === myGuesses.length;
@@ -358,15 +364,21 @@ export default function WordleRoom() {
                   {Array.from({ length: wordLen }).map((_, col) => {
                     const ch = rowWord[col] || "";
                     const mark = marks ? marks[col] : null;
+                    const filledEmpty = isCurrent && !!ch;
                     return (
                       <div
                         key={col}
-                        className="grid aspect-square flex-1 place-items-center rounded-md text-2xl font-extrabold"
+                        className="grid place-items-center rounded-md text-3xl font-extrabold"
                         style={{
-                          maxWidth: 56,
+                          width: TILE,
+                          height: TILE,
                           background: markBg(mark),
-                          color: mark ? "#fff" : "#fff",
-                          border: mark ? "none" : "2px solid rgba(255,255,255,0.18)",
+                          color: markFg(mark),
+                          border: mark
+                            ? "none"
+                            : filledEmpty
+                            ? "2px solid rgba(255,255,255,0.55)"
+                            : "2px solid rgba(255,255,255,0.16)",
                         }}
                       >
                         {ch}
@@ -377,6 +389,23 @@ export default function WordleRoom() {
               );
             })}
           </div>
+
+          {!bothDone && (
+            <div className="mx-auto mt-1 flex items-center justify-center gap-3 text-[11px] text-white/55">
+              <span className="flex items-center gap-1">
+                <i className="inline-block h-3 w-3 rounded-sm" style={{ background: "#16a34a" }} />
+                بمكانه
+              </span>
+              <span className="flex items-center gap-1">
+                <i className="inline-block h-3 w-3 rounded-sm" style={{ background: "#eab308" }} />
+                بمكان خاطئ
+              </span>
+              <span className="flex items-center gap-1">
+                <i className="inline-block h-3 w-3 rounded-sm" style={{ background: "#3f3f46" }} />
+                غير موجود
+              </span>
+            </div>
+          )}
 
           <div className="h-5 text-center text-sm text-rose-300">{flash}</div>
 
@@ -428,10 +457,11 @@ export default function WordleRoom() {
                     <button
                       key={k}
                       onClick={() => addLetter(k)}
-                      className="h-11 min-w-[26px] flex-1 rounded-md text-lg font-bold text-white"
+                      className="h-12 min-w-[28px] flex-1 rounded-md text-lg font-bold"
                       style={{
-                        maxWidth: 34,
+                        maxWidth: 36,
                         background: kbStates[k] ? markBg(kbStates[k]) : "rgba(255,255,255,0.14)",
+                        color: kbStates[k] ? markFg(kbStates[k]) : "#ffffff",
                       }}
                     >
                       {k}
