@@ -15,6 +15,14 @@ On-screen Arabic keyboard, three ways to play:
 - **⚔️ تنافسي (Versus):** each picks a word for the *other*; race to solve with
   the **fewest mistakes**.
 
+### 🟩 وردل (Arabic Wordle) — `/wordle`
+You both race to guess the **same hidden 5-letter word** in 6 tries; tiles go
+green (right letter, right spot), amber (right letter, wrong spot), gray (not in
+word). Whoever solves in fewer guesses wins the word; a running win tally is
+kept. Guesses are validated against the 30k dictionary; targets are random
+5-letter words. The opponent's guess **count** is shown but never their colours
+(that would leak the shared answer). Length/tries in [`lib/wordle.ts`](./lib/wordle.ts).
+
 ### 🅰️ اسم حيوان جماد (Categories / Stop) — `/stop`
 A random Arabic letter appears and you both race to fill five categories —
 اسم، حيوان، نبات، جماد، بلاد — with words starting with it. First to press **قف**

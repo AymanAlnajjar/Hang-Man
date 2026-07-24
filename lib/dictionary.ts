@@ -39,12 +39,22 @@ function acceptable(w: string): boolean {
 
 const DICTIONARY = new Set<string>();
 const PLANTABLE: string[] = []; // 3–6 letter words, used to seed grids
+const BY_LENGTH: Record<number, string[]> = {}; // words grouped by length
 
 function addWord(raw: string): void {
   const w = normalizeArabic(raw);
   if (!acceptable(w) || DICTIONARY.has(w)) return;
   DICTIONARY.add(w);
+  if (!BY_LENGTH[w.length]) BY_LENGTH[w.length] = [];
+  BY_LENGTH[w.length].push(w);
   if (w.length <= 6) PLANTABLE.push(w);
+}
+
+// A random word of exactly n letters (used to pick Wordle targets).
+export function randomWordOfLength(n: number): string | null {
+  const arr = BY_LENGTH[n];
+  if (!arr || arr.length === 0) return null;
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 // Seed the curated words immediately (synchronous, always available).
