@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { setPlayerId } from "@/lib/player";
 
 export type Profile = {
   id: string;
@@ -31,6 +32,11 @@ export function useAuth() {
       sub.subscription.unsubscribe();
     };
   }, []);
+
+  // Tie the game seat to the account so it stays stable across reloads.
+  useEffect(() => {
+    if (user) setPlayerId(user.id);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) {

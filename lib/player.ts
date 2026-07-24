@@ -14,3 +14,12 @@ export function getPlayerId(): string {
   }
   return id;
 }
+
+// When a user signs in, tie their game seat to their (stable) account id so it
+// never changes — important in in-app browsers that clear storage. Kept even
+// after logout (still a unique id for this person on this device).
+export function setPlayerId(id: string): void {
+  if (typeof window !== "undefined" && id) {
+    window.localStorage.setItem(KEY, id);
+  }
+}
