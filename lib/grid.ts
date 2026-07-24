@@ -1,5 +1,5 @@
 import { normalizeArabic } from "@/lib/arabic";
-import { isWord, PLANTABLE } from "@/lib/dictionary";
+import { isWord, plantableWords } from "@/lib/dictionary";
 
 export const GRID_SIZE = 5; // 5x5 board
 export const CELLS = GRID_SIZE * GRID_SIZE;
@@ -80,7 +80,7 @@ function tryPlant(cells: (string | null)[], letters: string[]): boolean {
 
 export function generateGrid(): string[] {
   const cells: (string | null)[] = Array(CELLS).fill(null);
-  const words = shuffle(PLANTABLE);
+  const words = shuffle(plantableWords());
   let planted = 0;
   for (const w of words) {
     if (planted >= PLANT_TARGET) break;

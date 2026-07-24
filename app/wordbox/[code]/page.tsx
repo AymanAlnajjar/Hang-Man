@@ -17,6 +17,7 @@ import {
   totalScore,
   wordScore,
 } from "@/lib/grid";
+import { loadFullDictionary } from "@/lib/dictionary";
 import Chat from "@/components/Chat";
 
 type BoxesGame = {
@@ -75,6 +76,11 @@ export default function WordGridRoom() {
         return;
       }
       let g = data as BoxesGame;
+
+      // Make sure the full word list is loaded before we generate a grid or
+      // validate words — so both players judge words by the same dictionary.
+      await loadFullDictionary();
+      if (cancelled) return;
 
       const isPlayer = g.player_a === pid || g.player_b === pid;
       if (!isPlayer && !claimedRef.current) {

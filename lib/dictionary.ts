@@ -1,71 +1,84 @@
-import { normalizeArabic } from "@/lib/arabic";
+import { normalizeArabic, ARABIC_LETTERS } from "@/lib/arabic";
 import { CATEGORIES } from "@/lib/words";
 
-// A curated list of common Arabic words used to (a) plant words into each grid
-// so there's always something to find, and (b) validate any word a player
-// traces. It's intentionally easy to grow — add words here and redeploy.
-// (The grid game is only as rich as this list, so expanding it improves play.)
+// The dictionary has two layers:
+//  1) a small curated list, seeded synchronously so the game works instantly;
+//  2) a big list (~18k common words in /public/ar-words.txt) loaded at runtime
+//     the first time a Word-Grid game starts.
+// Words are normalized the same way the game normalizes traced words, so a word
+// on the board matches an entry here.
+
 const EXTRA: string[] = [
-  // الوقت والطبيعة
   "يوم", "ليل", "نهار", "صباح", "مساء", "شهر", "سنة", "وقت", "ساعة", "شمس",
   "قمر", "نجم", "سماء", "ارض", "بحر", "نهر", "جبل", "مطر", "ثلج", "ريح",
   "رعد", "برق", "غيم", "نار", "ماء", "هواء", "تراب", "رمل", "نور", "ظلام",
-  // الناس والعائلة
-  "رجل", "امراة", "ولد", "بنت", "طفل", "اب", "ام", "اخ", "اخت", "جد",
-  "جدة", "عم", "خال", "ابن", "صديق", "جار", "ملك", "ناس", "شعب", "قوم",
-  // الجسد
-  "راس", "عين", "انف", "فم", "يد", "قدم", "قلب", "دم", "شعر", "وجه",
-  "اذن", "ظهر", "بطن", "ساق", "سن", "لسان", "كتف", "ركبة",
-  // الطعام
+  "رجل", "امراة", "ولد", "بنت", "طفل", "صديق", "جار", "ملك", "ناس", "شعب",
+  "راس", "عين", "انف", "قدم", "قلب", "شعر", "وجه", "اذن", "ظهر", "بطن",
   "خبز", "لحم", "ارز", "ملح", "سكر", "عسل", "لبن", "جبن", "زيت", "شاي",
   "قهوة", "تمر", "عنب", "تفاح", "موز", "حليب", "بيض", "سمك", "دجاج", "لوز",
-  // البيت والأشياء
   "بيت", "باب", "دار", "شباك", "كرسي", "سرير", "طاولة", "مفتاح", "كتاب", "قلم",
   "ورق", "صحن", "كاس", "ملعقة", "سكين", "ثوب", "حذاء", "مراة", "سجادة", "صندوق",
-  // الأماكن
   "مدينة", "قرية", "شارع", "سوق", "مدرسة", "مسجد", "حديقة", "ملعب", "مطار", "طريق",
-  "بلد", "وطن", "غرفة", "مطبخ", "حمام", "مكتب", "مصنع", "مزرعة",
-  // المواصلات
   "سيارة", "طيارة", "قطار", "سفينة", "دراجة", "حصان", "قارب", "شاحنة",
-  // الصفات
   "كبير", "صغير", "طويل", "قصير", "جديد", "قديم", "جميل", "بعيد", "قريب", "سريع",
-  "حار", "بارد", "سهل", "صعب", "غني", "فقير", "قوي", "ضعيف", "سعيد", "حزين",
-  "نظيف", "واسع", "ضيق", "خفيف", "ثقيل",
-  // الأفعال
   "علم", "عمل", "درس", "لعب", "اكل", "شرب", "نام", "مشى", "جرى", "قرا",
   "كتب", "سمع", "راى", "قال", "ذهب", "جاء", "وقف", "جلس", "قام", "فتح",
-  "حمل", "وضع", "اخذ", "عرف", "فهم", "ضحك", "بكى", "نظر", "دخل", "خرج",
-  "ركب", "وصل", "سافر", "رجع", "باع", "دفع", "سكن", "طبخ", "غسل", "لبس",
-  // الألوان والمواد
-  "احمر", "ازرق", "اخضر", "اصفر", "ابيض", "اسود", "بني", "وردي",
-  "ذهب", "فضة", "حديد", "خشب", "حجر", "زجاج",
-  // حيوانات
-  "قط", "كلب", "فار", "اسد", "نمر", "فيل", "ذئب", "دب", "بقرة", "خروف",
-  "ثعلب", "غزال", "حمار", "ديك", "بطة", "نحلة", "نملة", "عصفور", "سمكة", "ارنب",
-  // معنويات ومتفرقات
-  "حب", "سلام", "خير", "حق", "عدل", "صدق", "كذب", "فكر", "حلم", "امل",
-  "خوف", "فرح", "غضب", "صوت", "لون", "رقم", "اسم", "لغة", "كلمة", "حرف",
-  "سؤال", "جواب", "درب", "عمر", "جسم", "روح", "عقل", "علم",
+  "احمر", "ازرق", "اخضر", "اصفر", "ابيض", "اسود", "ذهب", "فضة", "حديد", "خشب",
+  "قط", "كلب", "فار", "اسد", "نمر", "فيل", "بقرة", "خروف", "ثعلب", "غزال",
+  "سلام", "خير", "عدل", "صدق", "فكر", "حلم", "امل", "خوف", "فرح", "غضب",
+  "صوت", "لون", "اسم", "لغة", "كلمة", "حرف", "سؤال", "جواب", "عمر", "عقل",
 ];
 
-// Build the normalized dictionary set from the category words + the list above.
-const build = () => {
-  const set = new Set<string>();
-  for (const cat of CATEGORIES) {
-    for (const w of cat.words) set.add(normalizeArabic(w));
-  }
-  for (const w of EXTRA) set.add(normalizeArabic(w));
-  return set;
-};
+const allowed = new Set(ARABIC_LETTERS);
+function acceptable(w: string): boolean {
+  const len = w.length;
+  if (len < 3 || len > 15) return false;
+  for (const ch of w) if (!allowed.has(ch)) return false;
+  return true;
+}
 
-export const DICTIONARY: Set<string> = build();
+const DICTIONARY = new Set<string>();
+const PLANTABLE: string[] = []; // 3–6 letter words, used to seed grids
 
-// Words suitable for planting into a 5x5 grid (3–6 letters).
-export const PLANTABLE: string[] = [...DICTIONARY].filter((w) => {
-  const len = w.replace(/ /g, "").length;
-  return len >= 3 && len <= 6;
-});
+function addWord(raw: string): void {
+  const w = normalizeArabic(raw);
+  if (!acceptable(w) || DICTIONARY.has(w)) return;
+  DICTIONARY.add(w);
+  if (w.length <= 6) PLANTABLE.push(w);
+}
+
+// Seed the curated words immediately (synchronous, always available).
+for (const cat of CATEGORIES) for (const w of cat.words) addWord(w);
+for (const w of EXTRA) addWord(w);
 
 export function isWord(word: string): boolean {
   return DICTIONARY.has(normalizeArabic(word));
+}
+
+export function plantableWords(): string[] {
+  return PLANTABLE;
+}
+
+export function dictionarySize(): number {
+  return DICTIONARY.size;
+}
+
+// Fetch and merge the big word list. Cached so it only ever runs once.
+let loadPromise: Promise<void> | null = null;
+export function loadFullDictionary(): Promise<void> {
+  if (loadPromise) return loadPromise;
+  loadPromise = (async () => {
+    try {
+      const res = await fetch("/ar-words.txt");
+      if (!res.ok) return;
+      const text = await res.text();
+      for (const line of text.split("\n")) {
+        const w = line.trim();
+        if (w) addWord(w);
+      }
+    } catch {
+      /* keep the curated fallback if the fetch fails */
+    }
+  })();
+  return loadPromise;
 }
