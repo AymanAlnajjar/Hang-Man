@@ -46,7 +46,7 @@ export default function StopRoom() {
   const [now, setNow] = useState(() => Date.now());
   const answersRef = useRef<Answers>({});
   const claimedRef = useRef(false);
-  const flushedRef = useRef(false);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const advancingRef = useRef(false);
 
   useEffect(() => {
@@ -171,7 +171,7 @@ export default function StopRoom() {
   useEffect(() => {
     if (game?.status === "playing") {
       setAnswers({});
-      flushedRef.current = false;
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     }
   }, [game?.round]);
 
@@ -179,51 +179,50 @@ export default function StopRoom() {
     if (game?.status === "playing") advancingRef.current = false;
   }, [game?.status]);
 
-  // If my partner pressed "stop", flush my answers and reveal.
-  useEffect(() => {
-    if (!game) return;
-    if (
-      game.status === "playing" &&
-      game.stopper &&
-      game.stopper !== me &&
-      !flushedRef.current
-    ) {
-      flushedRef.current = true;
-      const patch = isA
-        ? { answers_a: answersRef.current, status: "reveal" as const }
-        : { answers_b: answersRef.current, status: "reveal" as const };
-      supabase.from("stop_games").update(patch).eq("id", code);
-    }
-  }, [game?.stopper, game?.status, me, isA, code, game]);
-
-  // Time's up → reveal. Also writes my answers unless I already submitted them.
+  // Time's up → reveal (answers are already live-synced, see below).
   useEffect(() => {
     if (!game) return;
     if (game.status === "playing" && timeUp) {
-      const base = flushedRef.current
-        ? {}
-        : isA
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      const patch = isA
         ? { answers_a: answersRef.current }
         : { answers_b: answersRef.current };
-      flushedRef.current = true;
       supabase
         .from("stop_games")
-        .update({ ...base, status: "reveal", stopper: game.stopper ?? "time" })
+        .update({ ...patch, status: "reveal", stopper: game.stopper ?? "time" })
         .eq("id", code);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeUp, game?.status]);
 
   // ---- Actions -------------------------------------------------------------
-  const setAnswer = (cat: string, val: string) =>
-    setAnswers((a) => ({ ...a, [cat]: val }));
+  // Answers are saved to the DB as you type (debounced), so pressing "قف" can
+  // reveal instantly — no waiting on the other player's app to react.
+  const syncAnswers = useCallback(
+    async (ans: Answers) => {
+      const patch = isA ? { answers_a: ans } : { answers_b: ans };
+      await supabase.from("stop_games").update(patch).eq("id", code);
+    },
+    [isA, code]
+  );
+
+  const setAnswer = (cat: string, val: string) => {
+    setAnswers((a) => {
+      const next = { ...a, [cat]: val };
+      answersRef.current = next;
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => syncAnswers(next), 350);
+      return next;
+    });
+  };
 
   const pressStop = useCallback(async () => {
     if (!game || game.status !== "playing" || iStopped) return;
-    flushedRef.current = true; // my answers are being submitted now
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    // Reveal immediately; both players' answers are already in the DB.
     const patch = isA
-      ? { answers_a: answersRef.current, stopper: me }
-      : { answers_b: answersRef.current, stopper: me };
+      ? { answers_a: answersRef.current, stopper: me, status: "reveal" as const }
+      : { answers_b: answersRef.current, stopper: me, status: "reveal" as const };
     setGame({ ...game, ...patch });
     await supabase.from("stop_games").update(patch).eq("id", code);
   }, [game, iStopped, isA, me, code]);
