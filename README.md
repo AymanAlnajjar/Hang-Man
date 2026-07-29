@@ -114,8 +114,14 @@ Keep these two values handy for Step 3.
 **Accounts & friends (optional):** the platform works fully without signing in
 (rooms are shared by link). If you sign up (top-left on the home screen), you get
 a username, can add each other as friends, and invite each other straight into a
-game — no link needed. Accounts are a convenience layer; the games themselves
-still use anonymous room codes.
+game — no link needed. Signed-in players also get:
+- a **head-to-head win tally** that increments on each competitive game (versus
+  Hangman, Word Grid, Wordle) and pops up on the final screen;
+- a **direct chat** with each friend (💬 on the friends list) whose messages are
+  **saved permanently** and load the newest first — separate from the in-game
+  chat, so nothing disappears between games.
+
+Accounts are a convenience layer; the games themselves still use room codes.
 
 ### Step 2 — Put the code on GitHub
 

@@ -38,10 +38,10 @@ export default function Chat({
       .from("messages")
       .select("*")
       .eq("game_id", code)
-      .order("created_at", { ascending: true })
-      .limit(300)
+      .order("created_at", { ascending: false })
+      .limit(50)
       .then(({ data }) => {
-        if (active && data) setMessages(data as Msg[]);
+        if (active && data) setMessages((data as Msg[]).reverse());
       });
 
     const channel = supabase

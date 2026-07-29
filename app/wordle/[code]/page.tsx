@@ -21,6 +21,7 @@ import {
   type Mark,
 } from "@/lib/wordle";
 import Chat from "@/components/Chat";
+import MatchResult from "@/components/MatchResult";
 
 type WordleGame = {
   id: string;
@@ -435,6 +436,14 @@ export default function WordleRoom() {
               <button onClick={nextWord} className="btn-primary mt-4 rounded-2xl px-8 py-3 font-bold">
                 🔄 كلمة جديدة
               </button>
+              <div className="mt-3">
+                <MatchResult
+                  matchKey={`wl:${code}:${game.round}`}
+                  winner={winner ?? "draw"}
+                  playerA={game.player_a}
+                  playerB={game.player_b}
+                />
+              </div>
             </div>
           ) : iDone ? (
             <p className="mt-2 text-center text-sm text-white/60">

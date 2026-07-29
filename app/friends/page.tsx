@@ -209,6 +209,12 @@ export default function FriendsPage() {
                   <div className="flex items-center justify-between">
                     <span className="font-bold">@{profiles[fid] ?? "…"}</span>
                     <div className="flex gap-2">
+                      <Link
+                        href={`/dm/${fid}`}
+                        className="btn-ghost rounded-xl px-3 py-1.5 text-sm font-bold"
+                      >
+                        💬
+                      </Link>
                       <button
                         onClick={() => setInviteFor(inviteFor === fid ? null : fid)}
                         className="btn-primary rounded-xl px-4 py-1.5 text-sm font-bold"

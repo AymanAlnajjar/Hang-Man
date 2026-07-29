@@ -29,6 +29,7 @@ import {
 } from "@/lib/grid";
 import { loadFullDictionary } from "@/lib/dictionary";
 import Chat from "@/components/Chat";
+import MatchResult from "@/components/MatchResult";
 
 type Grid = string[];
 type BoxesGame = {
@@ -553,6 +554,12 @@ export default function WordGridRoom() {
               🔄 مباراة جديدة
             </button>
           </div>
+          <MatchResult
+            matchKey={`wb:${code}:${game.started_at ?? ""}`}
+            winner={myStars > oppStars ? (isA ? "a" : "b") : oppStars > myStars ? (isA ? "b" : "a") : "draw"}
+            playerA={game.player_a}
+            playerB={game.player_b}
+          />
           {Array.from({ length: maxR }).map((_, r) => {
             const mw = myRounds[r] ?? [];
             const ow = oppRounds[r] ?? [];

@@ -22,6 +22,7 @@ import Hangman from "@/components/Hangman";
 import WordDisplay from "@/components/WordDisplay";
 import Keyboard from "@/components/Keyboard";
 import Chat from "@/components/Chat";
+import MatchResult from "@/components/MatchResult";
 
 type Phase = "loading" | "notfound" | "full" | "ready";
 
@@ -641,46 +642,54 @@ function VersusResult({
   const oppGuessed = isA ? game.guessed_b : game.guessed_a;
 
   return (
-    <div
-      className={[
-        "rounded-3xl p-5 text-center",
-        draw
-          ? "bg-white/10 text-white"
-          : iWon
-          ? "bg-emerald-500/15 text-emerald-200"
-          : "bg-rose-500/15 text-rose-200",
-      ].join(" ")}
-    >
-      <div className="mb-1 text-4xl">{draw ? "🤝" : iWon ? "🏆" : "😅"}</div>
-      <p className="text-xl font-bold">
-        {draw ? "تعادل!" : iWon ? "فزت! 🎉" : "فاز خصمك"}
-      </p>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <div className="rounded-xl bg-black/20 p-3">
-          <div className="text-white/60">كلمتك</div>
-          <div className="font-bold" dir="rtl">
-            {myWord}
-          </div>
-          <div className="mt-1 text-white/60">
-            أخطاؤك: {myWord ? countWrong(myWord, myGuessed) : 0}
-          </div>
-        </div>
-        <div className="rounded-xl bg-black/20 p-3">
-          <div className="text-white/60">كلمة خصمك</div>
-          <div className="font-bold" dir="rtl">
-            {oppWord}
-          </div>
-          <div className="mt-1 text-white/60">
-            أخطاؤه: {oppWord ? countWrong(oppWord, oppGuessed) : 0}
-          </div>
-        </div>
-      </div>
-      <button
-        onClick={onPlayAgain}
-        className="btn-primary mt-4 rounded-2xl px-6 py-3 font-bold"
+    <div className="flex flex-col gap-3">
+      <div
+        className={[
+          "rounded-3xl p-5 text-center",
+          draw
+            ? "bg-white/10 text-white"
+            : iWon
+            ? "bg-emerald-500/15 text-emerald-200"
+            : "bg-rose-500/15 text-rose-200",
+        ].join(" ")}
       >
-        🔄 جولة جديدة
-      </button>
+        <div className="mb-1 text-4xl">{draw ? "🤝" : iWon ? "🏆" : "😅"}</div>
+        <p className="text-xl font-bold">
+          {draw ? "تعادل!" : iWon ? "فزت! 🎉" : "فاز خصمك"}
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <div className="rounded-xl bg-black/20 p-3">
+            <div className="text-white/60">كلمتك</div>
+            <div className="font-bold" dir="rtl">
+              {myWord}
+            </div>
+            <div className="mt-1 text-white/60">
+              أخطاؤك: {myWord ? countWrong(myWord, myGuessed) : 0}
+            </div>
+          </div>
+          <div className="rounded-xl bg-black/20 p-3">
+            <div className="text-white/60">كلمة خصمك</div>
+            <div className="font-bold" dir="rtl">
+              {oppWord}
+            </div>
+            <div className="mt-1 text-white/60">
+              أخطاؤه: {oppWord ? countWrong(oppWord, oppGuessed) : 0}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={onPlayAgain}
+          className="btn-primary mt-4 rounded-2xl px-6 py-3 font-bold"
+        >
+          🔄 جولة جديدة
+        </button>
+      </div>
+      <MatchResult
+        matchKey={`hv:${game.id}:${game.round}`}
+        winner={winner}
+        playerA={game.player_a}
+        playerB={game.player_b}
+      />
     </div>
   );
 }

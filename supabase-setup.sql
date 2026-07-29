@@ -305,4 +305,63 @@ drop policy if exists "respond invite" on public.invites;
 create policy "respond invite" on public.invites for update
   using (auth.uid() = to_user or auth.uid() = from_user);
 
+-- ============================================================================
+-- 7) Head-to-head win tally between two accounts (competitive games).
+-- ============================================================================
+create table if not exists public.head2head (
+  user_low   uuid not null,
+  user_high  uuid not null,
+  wins_low   int  not null default 0,
+  wins_high  int  not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (user_low, user_high)
+);
+
+-- A ledger so each finished match is only counted once (any client can try).
+create table if not exists public.recorded_matches (
+  match_key  text primary key,
+  created_at timestamptz not null default now()
+);
+
+-- Atomic increment; runs as owner so it can update head2head under RLS.
+create or replace function public.record_win(winner uuid, loser uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare lo uuid; hi uuid;
+begin
+  if winner is null or loser is null or winner = loser then return; end if;
+  lo := least(winner, loser);
+  hi := greatest(winner, loser);
+  insert into public.head2head (user_low, user_high, wins_low, wins_high)
+  values (lo, hi,
+          case when winner = lo then 1 else 0 end,
+          case when winner = hi then 1 else 0 end)
+  on conflict (user_low, user_high) do update set
+    wins_low  = public.head2head.wins_low  + case when winner = public.head2head.user_low  then 1 else 0 end,
+    wins_high = public.head2head.wins_high + case when winner = public.head2head.user_high then 1 else 0 end,
+    updated_at = now();
+end;
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'head2head'
+  ) then
+    alter publication supabase_realtime add table public.head2head;
+  end if;
+end $$;
+
+alter table public.head2head        enable row level security;
+alter table public.recorded_matches enable row level security;
+
+drop policy if exists "h2h visible" on public.head2head;
+create policy "h2h visible" on public.head2head for select
+  using (auth.uid() = user_low or auth.uid() = user_high);
+
+drop policy if exists "rm insert" on public.recorded_matches;
+create policy "rm insert" on public.recorded_matches for insert with check (true);
+drop policy if exists "rm select" on public.recorded_matches;
+create policy "rm select" on public.recorded_matches for select using (true);
+
 -- Done. Your app needs the Project URL and anon key (Settings -> API).
