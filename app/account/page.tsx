@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
+import AppShell from "@/components/layout/AppShell";
+import Button from "@/components/ui/Button";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -93,56 +95,67 @@ export default function AccountPage() {
   }
 
   if (loading) {
-    return <Centered>جارٍ التحميل…</Centered>;
+    return (
+      <AppShell>
+        <p className="mt-16 text-center text-ink-soft">جارٍ التحميل…</p>
+      </AppShell>
+    );
   }
 
   // Already signed in.
   if (user) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 pt-safe pb-safe">
-        <BackLink />
-        <div className="glass rounded-3xl p-6 text-center">
-          <div className="mb-2 text-4xl">👤</div>
-          <h1 className="text-2xl font-bold">مرحبًا {profile?.username ?? ""}</h1>
-          <p className="mt-1 text-sm text-white/60">{user.email}</p>
-          <Link
-            href="/friends"
-            className="btn-primary mt-5 block rounded-2xl py-3 font-bold"
+      <AppShell>
+        <header className="pt-2">
+          <h1 className="text-2xl font-extrabold">حسابنا</h1>
+        </header>
+        <div className="card mt-4 bg-surface p-6 text-center">
+          <div
+            className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-md border-2 border-ink bg-primary-soft text-3xl"
+            aria-hidden
           >
-            👥 الأصدقاء والدعوات
+            🌷
+          </div>
+          <h2 className="text-xl font-extrabold">
+            مرحبًا {profile?.username ?? ""}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">{user.email}</p>
+          <Link href="/friends" className="mt-5 block">
+            <Button variant="primary" block>
+              👥 الأصدقاء والدعوات
+            </Button>
           </Link>
           <button
             onClick={signOut}
-            className="btn-ghost mt-3 w-full rounded-2xl py-3 font-bold"
+            className="btn btn-ghost mt-3 w-full"
           >
             تسجيل الخروج
           </button>
         </div>
-      </main>
+      </AppShell>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 pt-safe pb-safe">
-      <BackLink />
-      <div className="mb-6 text-center">
-        <div className="mb-2 text-5xl animate-floaty">🔐</div>
-        <h1 className="text-3xl font-extrabold">
+    <AppShell>
+      <div className="mb-5 mt-4 text-center">
+        <div className="mb-2 text-5xl animate-floaty" aria-hidden>🔐</div>
+        <h1 className="text-2xl font-extrabold">
           {mode === "in" ? "تسجيل الدخول" : "إنشاء حساب"}
         </h1>
-        <p className="mt-1 text-sm text-white/60">
+        <p className="mt-1 text-sm text-ink-soft">
           حساب واحد لك، لتضيف شريكك كصديق وتدعوه للألعاب مباشرة.
         </p>
       </div>
 
-      <div className="glass rounded-3xl p-6">
+      <div className="card bg-surface p-6">
         {mode === "up" && (
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="اسم المستخدم"
             dir="rtl"
-            className="input-field mb-3 w-full rounded-2xl px-4 py-3 text-white placeholder:text-white/30"
+            className="input-field mb-3 w-full px-4 py-3"
           />
         )}
         <input
@@ -152,7 +165,7 @@ export default function AccountPage() {
           type="email"
           dir="ltr"
           autoComplete="email"
-          className="input-field mb-3 w-full rounded-2xl px-4 py-3 text-white placeholder:text-white/30"
+          className="input-field mb-3 w-full px-4 py-3"
         />
         <input
           value={password}
@@ -162,24 +175,20 @@ export default function AccountPage() {
           type="password"
           dir="ltr"
           autoComplete={mode === "in" ? "current-password" : "new-password"}
-          className="input-field mb-4 w-full rounded-2xl px-4 py-3 text-white placeholder:text-white/30"
+          className="input-field mb-4 w-full px-4 py-3"
         />
 
-        <button
-          onClick={submit}
-          disabled={busy}
-          className="btn-primary w-full rounded-2xl py-3 text-lg font-bold disabled:opacity-50"
-        >
-          {busy ? "…" : mode === "in" ? "دخول" : "إنشاء الحساب"}
-        </button>
+        <Button onClick={submit} loading={busy} variant="primary" block>
+          {mode === "in" ? "دخول" : "إنشاء الحساب"}
+        </Button>
 
         {error && (
-          <p className="mt-3 rounded-xl bg-rose-500/15 px-4 py-2 text-center text-sm text-rose-200">
+          <p className="mt-3 rounded-md border-2 border-ink bg-danger-soft px-4 py-2 text-center text-sm text-ink">
             {error}
           </p>
         )}
         {info && (
-          <p className="mt-3 rounded-xl bg-emerald-500/15 px-4 py-2 text-center text-sm text-emerald-200">
+          <p className="mt-3 rounded-md border-2 border-ink bg-success-soft px-4 py-2 text-center text-sm text-ink">
             {info}
           </p>
         )}
@@ -190,12 +199,12 @@ export default function AccountPage() {
             setError(null);
             setInfo(null);
           }}
-          className="mt-4 w-full text-center text-sm text-white/60 hover:text-white"
+          className="mt-4 w-full text-center text-sm font-bold text-ink-soft"
         >
           {mode === "in" ? "ليس لديك حساب؟ أنشئ واحدًا" : "لديك حساب؟ سجّل الدخول"}
         </button>
       </div>
-    </main>
+    </AppShell>
   );
 }
 
@@ -210,23 +219,4 @@ function friendlyAuthError(m: string): string {
   if (s.includes("valid email") || s.includes("invalid email"))
     return "البريد الإلكتروني غير صحيح.";
   return m;
-}
-
-function BackLink() {
-  return (
-    <Link
-      href="/"
-      className="mb-4 inline-flex items-center gap-1 self-start text-sm text-white/50 hover:text-white"
-    >
-      ← كل الألعاب
-    </Link>
-  );
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-white/80">
-      {children}
-    </main>
-  );
 }

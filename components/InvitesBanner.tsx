@@ -80,7 +80,7 @@ export default function InvitesBanner() {
         return (
           <div
             key={inv.id}
-            className="flex items-center justify-between rounded-2xl border border-fuchsia-400/40 bg-fuchsia-500/15 px-4 py-3"
+            className="card flex items-center justify-between gap-2 bg-yellow-soft p-3"
           >
             <div className="min-w-0 text-sm">
               <span className="font-bold">@{names[inv.from_user] ?? "صديق"}</span> دعاك للعب{" "}
@@ -91,13 +91,13 @@ export default function InvitesBanner() {
             <div className="flex shrink-0 gap-2">
               <button
                 onClick={() => accept(inv)}
-                className="btn-primary rounded-xl px-4 py-1.5 text-sm font-bold"
+                className="btn btn-primary min-h-[40px] px-4 text-sm"
               >
                 دخول
               </button>
               <button
                 onClick={() => ignore(inv)}
-                className="btn-ghost rounded-xl px-3 py-1.5 text-sm"
+                className="btn btn-ghost min-h-[40px] px-3 text-sm"
               >
                 تجاهل
               </button>

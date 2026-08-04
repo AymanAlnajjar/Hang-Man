@@ -1,112 +1,114 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import InvitesBanner from "@/components/InvitesBanner";
-
-const GAMES = [
-  {
-    href: "/hangman",
-    emoji: "🎯",
-    name: "المشنقة",
-    desc: "خمّنا الكلمة حرفًا حرفًا قبل أن يكتمل الرسم.",
-    tag: "٣ أنماط",
-  },
-  {
-    href: "/wordbox",
-    emoji: "🔤",
-    name: "تكوين الكلمات",
-    desc: "كوّنا أكبر عدد من الكلمات من الحروف قبل انتهاء الوقت.",
-    tag: "تنافسي",
-  },
-  {
-    href: "/meld",
-    emoji: "🧠",
-    name: "توارد الأفكار",
-    desc: "كلٌّ يكتب كلمة سرًّا — والهدف أن تتطابقا في الكلمة نفسها.",
-    tag: "تعاوني",
-  },
-  {
-    href: "/stop",
-    emoji: "🅰️",
-    name: "اسم حيوان جماد",
-    desc: "حرف عشوائي، واملآ التصنيفات بأسرع وقت. الأكثر نقاطًا يفوز.",
-    tag: "تنافسي",
-  },
-  {
-    href: "/wordle",
-    emoji: "🟩",
-    name: "وردل",
-    desc: "خمّنا الكلمة المخفية في ٦ محاولات — من يحلّها بمحاولات أقل يفوز.",
-    tag: "تنافسي",
-  },
-];
+import AppShell from "@/components/layout/AppShell";
+import GameCard from "@/components/home/GameCard";
+import Chip from "@/components/ui/Chip";
+import { GAMES, gameByKey } from "@/lib/games";
+import { GAME_META } from "@/lib/rooms";
+import { getRecentRoom, type RecentRoom } from "@/lib/recent";
+import { greeting, heroLine } from "@/lib/microcopy";
 
 export default function Hub() {
   const { user, profile } = useAuth();
+  const [recent, setRecent] = useState<RecentRoom | null>(null);
+  // Pick the witty line after mount so SSR and the first client render match.
+  const [seed, setSeed] = useState(0);
+
+  useEffect(() => {
+    setRecent(getRecentRoom());
+    setSeed(Math.floor(Math.random() * 997));
+  }, []);
+
+  const [featured, ...rest] = GAMES;
+  const name = profile?.username ?? null;
+  const recentGame = recent ? gameByKey(recent.game) : undefined;
+
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-6 pt-safe pb-safe">
-      {/* Account bar */}
-      <div className="mb-4 mt-1 flex items-center justify-between">
-        {user ? (
-          <Link
-            href="/friends"
-            className="glass rounded-full px-4 py-2 text-sm font-bold hover:border-fuchsia-400/60"
-          >
-            👥 الأصدقاء
-          </Link>
-        ) : (
-          <Link
-            href="/account"
-            className="glass rounded-full px-4 py-2 text-sm font-bold hover:border-fuchsia-400/60"
-          >
-            🔐 تسجيل الدخول
-          </Link>
-        )}
-        <Link href="/account" className="text-sm text-white/60 hover:text-white">
-          {user ? `@${profile?.username ?? "حسابي"}` : "بدون حساب"}
+    <AppShell>
+      {/* Greeting + account */}
+      <div className="flex items-start justify-between gap-3 pt-2">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold leading-tight">
+            {greeting(name)}
+          </h1>
+          <p className="mt-1 text-sm text-ink-soft">{heroLine(seed)}</p>
+        </div>
+        <Link
+          href={user ? "/account" : "/account"}
+          className="chip chip-primary shrink-0"
+        >
+          {user ? `@${profile?.username ?? "حسابنا"}` : "تسجيل الدخول"}
         </Link>
       </div>
 
-      <InvitesBanner />
-
-      <div className="mb-8 text-center">
-        <div className="mb-3 text-5xl animate-floaty">🎮</div>
-        <h1 className="text-4xl font-extrabold tracking-tight">ألعاب الكلمات</h1>
-        <p className="mt-2 text-white/60">
-          اختاروا لعبة، أنشئوا غرفة، وادعُوا صديقكم — أو شاركوا الرابط. ❤️
-        </p>
+      <div className="mt-4">
+        <InvitesBanner />
       </div>
 
-      <div className="flex flex-col gap-3">
-        {GAMES.map((g) => (
-          <Link
-            key={g.href}
-            href={g.href}
-            className="glass group flex items-center gap-4 rounded-3xl p-5 transition-all hover:-translate-y-0.5 hover:border-fuchsia-400/60"
-          >
-            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-white/5 text-4xl">
-              {g.emoji}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold">{g.name}</h2>
-                <span className="rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[11px] font-bold text-fuchsia-200">
-                  {g.tag}
-                </span>
-              </div>
-              <p className="mt-1 text-sm leading-snug text-white/55">{g.desc}</p>
-            </div>
-            <div className="shrink-0 text-2xl text-white/30 transition-transform group-hover:-translate-x-1">
-              ‹
-            </div>
-          </Link>
+      {/* Resume last room */}
+      {recent && recentGame && (
+        <Link
+          href={GAME_META[recent.game].route(recent.code)}
+          className="card card-interactive mt-2 flex items-center gap-4 rounded-lg bg-primary-soft p-5"
+        >
+          <span className="grid h-16 w-16 shrink-0 place-items-center rounded-md border-2 border-ink bg-surface-strong text-4xl">
+            {recentGame.icon}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-bold text-primary-dark">أكملوا اللعب</div>
+            <h2 className="truncate text-xl font-extrabold">{recentGame.name}</h2>
+            <p className="mt-0.5 text-sm text-ink-soft">
+              الغرفة <span dir="ltr" className="font-bold tracking-widest">{recent.code}</span>
+            </p>
+          </div>
+          <span aria-hidden className="shrink-0 text-2xl text-primary-dark">‹</span>
+        </Link>
+      )}
+
+      {/* Featured game */}
+      <section className="mt-4">
+        <h2 className="mb-2 text-lg font-bold">
+          العبوا الآن
+        </h2>
+        <GameCard info={featured} variant="featured" />
+      </section>
+
+      {/* Rest of the games as a light bento grid */}
+      <section className="mt-3 grid grid-cols-2 gap-3">
+        {rest.map((g) => (
+          <GameCard key={g.key} info={g} variant="compact" />
         ))}
-      </div>
+        <Link
+          href="/games"
+          className="card card-interactive flex flex-col items-start justify-between gap-2 bg-surface p-4"
+        >
+          <span className="grid h-12 w-12 place-items-center rounded-md border-2 border-ink bg-surface-strong text-2xl">
+            ⋯
+          </span>
+          <h3 className="text-[17px] font-bold leading-tight">كل الألعاب</h3>
+          <Chip tone="muted" className="self-start">المكتبة</Chip>
+        </Link>
+      </section>
 
-      <p className="mt-8 text-center text-xs text-white/40">
-        المزيد من الألعاب قريبًا…
+      {/* Rivalry teaser */}
+      <Link
+        href="/results"
+        className="card card-interactive mt-4 flex items-center justify-between gap-3 bg-yellow-soft p-4"
+      >
+        <div>
+          <div className="text-xs font-bold text-ink-soft">سجلّ المواجهات</div>
+          <p className="text-[15px] font-bold">من المتصدّر بينكما؟</p>
+        </div>
+        <span className="chip chip-yellow">🏆 النتائج</span>
+      </Link>
+
+      <p className="mt-6 text-center text-xs text-ink-soft">
+        صُنع بحبّ لشخصين — والمزيد من الألعاب قريبًا.
       </p>
-    </main>
+    </AppShell>
   );
 }

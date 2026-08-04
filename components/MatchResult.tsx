@@ -76,14 +76,14 @@ export default function MatchResult({
 
   if (!h2h) return null;
   return (
-    <div className="glass rounded-2xl p-4 text-center">
-      <div className="mb-1 text-xs text-white/50">🏆 سجلّ المواجهات بينكما</div>
+    <div className="card bg-surface p-4 text-center">
+      <div className="mb-1 text-xs font-bold text-ink-soft">🏆 سجلّ المواجهات بينكما</div>
       <div className="flex items-center justify-center gap-3 text-lg font-extrabold">
-        <span className="text-emerald-300">
+        <span className="text-primary-dark">
           {names.me} {h2h.mine}
         </span>
-        <span className="text-white/40">—</span>
-        <span className="text-rose-300">
+        <span className="text-ink-soft">—</span>
+        <span className="text-coral">
           {h2h.theirs} {names.opp}
         </span>
       </div>

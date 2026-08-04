@@ -1,7 +1,8 @@
 "use client";
 
-// Shows the word as a row of letter slots. Guessed (or revealed) letters show,
-// the rest show a blank underline. Spaces render as a gap between words.
+// Shows the word as a row of letter tiles. Guessed (or revealed) letters show,
+// the rest show a blank slot. Spaces render as a gap between words. Letters stay
+// centered inside their tiles even in the RTL layout.
 export default function WordDisplay({
   word,
   guessed,
@@ -17,28 +18,30 @@ export default function WordDisplay({
   return (
     <div
       dir="rtl"
-      className="flex flex-wrap justify-center gap-x-2 gap-y-3"
+      className="flex flex-wrap justify-center gap-2"
+      role="group"
       aria-label="الكلمة"
     >
       {chars.map((ch, i) => {
         if (ch === " ") {
-          return <span key={i} className="w-4" />;
+          return <span key={i} className="w-3" />;
         }
         const shown = reveal || guessedSet.has(ch);
-        const missed = reveal && !guessedSet.has(ch); // letter never guessed, shown on loss
+        const missed = reveal && !guessedSet.has(ch); // never guessed, shown on loss
         return (
           <span
             key={i}
+            aria-label={shown ? ch : "حرف مخفي"}
             className={[
-              "inline-flex h-14 w-11 items-end justify-center rounded-lg border-b-4 pb-1 text-3xl font-bold transition-colors",
+              "grid h-14 w-11 place-items-center rounded-md border-2 border-ink text-3xl font-extrabold",
               shown
                 ? missed
-                  ? "border-rose-400/70 text-rose-300"
-                  : "border-fuchsia-300 text-white animate-pop"
-                : "border-white/25 text-transparent",
+                  ? "animate-pop bg-danger-soft text-ink"
+                  : "animate-bounce-up bg-yellow text-ink"
+                : "bg-surface-strong text-transparent",
             ].join(" ")}
           >
-            {shown ? ch : "؟"}
+            {shown ? ch : "•"}
           </span>
         );
       })}

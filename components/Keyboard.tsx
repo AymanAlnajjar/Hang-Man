@@ -2,9 +2,9 @@
 
 import { ARABIC_LETTERS } from "@/lib/arabic";
 
-// On-screen Arabic keyboard. Correct guesses turn green, wrong ones red,
-// and every tried letter is disabled. `disabled` locks the whole board
-// (used when it's not your turn or the round is over).
+// On-screen Arabic keyboard. Correct guesses turn green, wrong ones red (with a
+// small shake), and every tried letter is disabled. `disabled` locks the whole
+// board (used when it's not your turn or the round is over).
 export default function Keyboard({
   guessed,
   wordLetters,
@@ -19,7 +19,7 @@ export default function Keyboard({
   const guessedSet = new Set(guessed);
 
   return (
-    <div dir="rtl" className="grid grid-cols-6 gap-2 sm:grid-cols-10">
+    <div dir="rtl" className="grid grid-cols-7 gap-1.5 sm:grid-cols-9">
       {ARABIC_LETTERS.map((letter) => {
         const tried = guessedSet.has(letter);
         const correct = tried && wordLetters.has(letter);
@@ -29,17 +29,19 @@ export default function Keyboard({
             key={letter}
             type="button"
             disabled={disabled || tried}
+            aria-label={letter}
+            aria-pressed={tried}
             onClick={() => onGuess(letter)}
             className={[
-              "aspect-square rounded-xl text-xl font-bold transition-all select-none",
-              "disabled:cursor-not-allowed",
+              "grid aspect-square min-h-[44px] place-items-center rounded-md border-2 border-ink text-xl font-extrabold transition-transform",
+              "disabled:cursor-not-allowed active:translate-y-0.5",
               correct
-                ? "bg-emerald-500/90 text-white shadow-lg shadow-emerald-500/20"
+                ? "bg-success text-white"
                 : wrong
-                ? "bg-rose-500/80 text-white/90"
+                ? "animate-shake bg-danger-soft text-ink/50"
                 : disabled
-                ? "bg-white/5 text-white/30"
-                : "bg-white/10 text-white hover:bg-fuchsia-500/40 hover:-translate-y-0.5 active:translate-y-0",
+                ? "bg-muted text-disabled"
+                : "bg-surface-strong text-ink shadow-card-sm",
             ].join(" ")}
           >
             {letter}

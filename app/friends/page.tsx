@@ -7,6 +7,9 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { getPlayerId } from "@/lib/player";
 import { GAME_META, type GameType, createRoom } from "@/lib/rooms";
+import AppShell from "@/components/layout/AppShell";
+import Button from "@/components/ui/Button";
+import EmptyState from "@/components/ui/EmptyState";
 
 type Friendship = {
   id: number;
@@ -128,15 +131,28 @@ export default function FriendsPage() {
     router.push(GAME_META[type].route(code));
   }
 
-  if (loading) return <Centered>جارٍ التحميل…</Centered>;
+  if (loading)
+    return (
+      <AppShell>
+        <p className="mt-16 text-center text-ink-soft">جارٍ التحميل…</p>
+      </AppShell>
+    );
   if (!user)
     return (
-      <Centered>
-        <p className="mb-4 text-lg">سجّل الدخول أولًا لإضافة الأصدقاء.</p>
-        <Link href="/account" className="btn-primary rounded-2xl px-6 py-3 font-bold">
-          تسجيل الدخول
-        </Link>
-      </Centered>
+      <AppShell>
+        <div className="mt-6">
+          <EmptyState
+            icon="🔐"
+            title="سجّل الدخول أولًا"
+            hint="بحساب تضيف شريكك كصديق وتدعوه للألعاب مباشرة."
+            action={
+              <Link href="/account">
+                <Button variant="primary">تسجيل الدخول</Button>
+              </Link>
+            }
+          />
+        </div>
+      </AppShell>
     );
 
   const incoming = rows.filter((f) => f.addressee === user.id && f.status === "pending");
@@ -145,18 +161,17 @@ export default function FriendsPage() {
   const other = (f: Friendship) => (f.requester === user.id ? f.addressee : f.requester);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pt-safe pb-safe">
-      <header className="mb-4 mt-2 flex items-center justify-between">
-        <Link href="/" className="text-sm text-white/50 hover:text-white">
-          ← الألعاب
-        </Link>
-        <h1 className="text-lg font-bold">الأصدقاء</h1>
-        <span className="text-xs text-white/50">@{profile?.username}</span>
+    <AppShell>
+      <header className="flex items-center justify-between pt-2">
+        <h1 className="text-2xl font-extrabold">الأصدقاء</h1>
+        <span className="chip chip-primary">@{profile?.username}</span>
       </header>
 
       {/* Add friend */}
-      <div className="glass rounded-3xl p-4">
-        <label className="mb-2 block text-sm text-white/70">إضافة صديق باسم المستخدم</label>
+      <div className="card mt-4 bg-surface p-4">
+        <label className="mb-2 block text-sm font-bold text-ink-soft">
+          إضافة صديق باسم المستخدم
+        </label>
         <div className="flex gap-2">
           <input
             value={search}
@@ -164,28 +179,28 @@ export default function FriendsPage() {
             onKeyDown={(e) => e.key === "Enter" && sendRequest()}
             placeholder="اسم المستخدم"
             dir="rtl"
-            className="input-field w-full rounded-2xl px-4 py-2.5 text-white placeholder:text-white/30"
+            className="input-field w-full px-4 py-2.5"
           />
-          <button onClick={sendRequest} className="btn-primary shrink-0 rounded-2xl px-5 font-bold">
+          <button onClick={sendRequest} className="btn btn-primary shrink-0">
             إضافة
           </button>
         </div>
-        {msg && <p className="mt-3 text-center text-sm text-white/70">{msg}</p>}
+        {msg && <p className="mt-3 text-center text-sm text-ink-soft">{msg}</p>}
       </div>
 
       {/* Incoming requests */}
       {incoming.length > 0 && (
         <section className="mt-4">
-          <h2 className="mb-2 text-sm font-bold text-white/70">طلبات واردة</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink-soft">طلبات واردة</h2>
           <div className="flex flex-col gap-2">
             {incoming.map((f) => (
-              <div key={f.id} className="glass flex items-center justify-between rounded-2xl px-4 py-3">
+              <div key={f.id} className="card flex items-center justify-between bg-surface p-3">
                 <span className="font-bold">@{profiles[other(f)] ?? "…"}</span>
                 <div className="flex gap-2">
-                  <button onClick={() => accept(f.id)} className="btn-primary rounded-xl px-4 py-1.5 text-sm font-bold">
+                  <button onClick={() => accept(f.id)} className="btn btn-primary min-h-[40px] px-4 text-sm">
                     قبول
                   </button>
-                  <button onClick={() => remove(f.id)} className="btn-ghost rounded-xl px-3 py-1.5 text-sm">
+                  <button onClick={() => remove(f.id)} className="btn btn-ghost min-h-[40px] px-3 text-sm">
                     رفض
                   </button>
                 </div>
@@ -197,31 +212,32 @@ export default function FriendsPage() {
 
       {/* Friends */}
       <section className="mt-4">
-        <h2 className="mb-2 text-sm font-bold text-white/70">أصدقائي ({friends.length})</h2>
+        <h2 className="mb-2 text-sm font-bold text-ink-soft">أصدقائي ({friends.length})</h2>
         {friends.length === 0 ? (
-          <p className="text-sm text-white/40">لا أصدقاء بعد — أضف شريكك أعلاه ❤️</p>
+          <p className="text-sm text-ink-soft">لا أصدقاء بعد — أضف شريكك أعلاه ❤️</p>
         ) : (
           <div className="flex flex-col gap-2">
             {friends.map((f) => {
               const fid = other(f);
               return (
-                <div key={f.id} className="glass rounded-2xl p-3">
-                  <div className="flex items-center justify-between">
+                <div key={f.id} className="card bg-surface p-3">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-bold">@{profiles[fid] ?? "…"}</span>
                     <div className="flex gap-2">
                       <Link
                         href={`/dm/${fid}`}
-                        className="btn-ghost rounded-xl px-3 py-1.5 text-sm font-bold"
+                        className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                        aria-label="مراسلة"
                       >
                         💬
                       </Link>
                       <button
                         onClick={() => setInviteFor(inviteFor === fid ? null : fid)}
-                        className="btn-primary rounded-xl px-4 py-1.5 text-sm font-bold"
+                        className="btn btn-primary min-h-[40px] px-4 text-sm"
                       >
                         🎮 العب
                       </button>
-                      <button onClick={() => remove(f.id)} className="btn-ghost rounded-xl px-3 py-1.5 text-sm">
+                      <button onClick={() => remove(f.id)} className="btn btn-ghost min-h-[40px] px-3 text-sm">
                         حذف
                       </button>
                     </div>
@@ -232,7 +248,7 @@ export default function FriendsPage() {
                         <button
                           key={t}
                           onClick={() => invite(fid, t)}
-                          className="rounded-xl border border-white/12 bg-white/5 p-2 text-center hover:bg-fuchsia-500/20"
+                          className="rounded-md border-2 border-ink bg-surface-strong p-2 text-center active:translate-y-0.5"
                         >
                           <div className="text-xl">{GAME_META[t].emoji}</div>
                           <div className="mt-0.5 text-[11px] font-bold leading-tight">{GAME_META[t].name}</div>
@@ -250,25 +266,17 @@ export default function FriendsPage() {
       {/* Outgoing */}
       {outgoing.length > 0 && (
         <section className="mt-4">
-          <h2 className="mb-2 text-sm font-bold text-white/70">طلبات مُرسلة</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink-soft">طلبات مُرسلة</h2>
           <div className="flex flex-col gap-2">
             {outgoing.map((f) => (
-              <div key={f.id} className="glass flex items-center justify-between rounded-2xl px-4 py-2.5 text-sm">
-                <span className="text-white/70">@{profiles[other(f)] ?? "…"}</span>
-                <span className="text-white/40">بانتظار القبول…</span>
+              <div key={f.id} className="card flex items-center justify-between bg-surface px-4 py-2.5 text-sm">
+                <span className="text-ink-soft">@{profiles[other(f)] ?? "…"}</span>
+                <span className="text-ink-soft">بانتظار القبول…</span>
               </div>
             ))}
           </div>
         </section>
       )}
-    </main>
-  );
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-white/80">
-      {children}
-    </main>
+    </AppShell>
   );
 }

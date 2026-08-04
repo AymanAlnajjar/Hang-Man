@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getPlayerId } from "@/lib/player";
+import { saveRecentRoom } from "@/lib/recent";
 import {
   MAX_WRONG,
   countWrong,
@@ -56,6 +57,7 @@ export default function GameRoom() {
     const pid = getPlayerId();
     setMe(pid);
     setShareUrl(`${window.location.origin}/game/${code}`);
+    saveRecentRoom("hangman", code);
 
     let cancelled = false;
 
@@ -153,6 +155,12 @@ export default function GameRoom() {
   const bothPresent = !!game?.player_a && !!game?.player_b;
   const isVersus = game?.mode === "versus";
   const isTogether = game?.mode === "together";
+  // Three distinct modes — label each correctly (fixes coop showing "تعاوني").
+  const modeLabel = isVersus
+    ? "⚔️ تنافسي"
+    : isTogether
+    ? "🤝 تعاوني"
+    : "✍️ تبادلي";
 
   // ---- Co-op derived state -------------------------------------------------
   const iAmChooser = !!game && !!me && game.chooser === me;
@@ -381,42 +389,37 @@ export default function GameRoom() {
   if (!game) return <Centered>…</Centered>;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col px-4 pt-safe pb-safe">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col px-4 pt-safe pb-safe">
       {/* Header */}
       <header className="mb-4 flex items-center justify-between">
         <button
           onClick={() => router.push("/")}
-          className="text-white/50 hover:text-white"
+          className="grid h-10 w-10 place-items-center rounded-md border-2 border-ink bg-surface-strong text-ink"
           aria-label="خروج"
         >
           ✕
         </button>
         <div className="text-center">
-          <div className="text-xs text-white/50">رمز الغرفة</div>
-          <div dir="ltr" className="text-lg font-bold tracking-widest">
+          <div className="text-xs text-ink-soft">رمز الغرفة</div>
+          <div dir="ltr" className="text-lg font-extrabold tracking-widest">
             {code}
           </div>
         </div>
         <div className="text-left">
-          <div className="text-xs text-white/50">الجولة {game.round}</div>
-          <div className="text-xs font-bold text-fuchsia-300">
-            {isVersus ? "⚔️ تنافسي" : "🤝 تعاوني"}
-          </div>
+          <div className="text-xs text-ink-soft">الجولة {game.round}</div>
+          <div className="text-xs font-bold text-primary-dark">{modeLabel}</div>
         </div>
       </header>
 
       {/* Waiting for partner */}
       {!bothPresent && (
-        <div className="glass rounded-3xl p-6 text-center">
+        <div className="card bg-surface p-6 text-center">
           <div className="mb-3 text-4xl animate-floaty">🔗</div>
-          <h2 className="mb-2 text-xl font-bold">بانتظار شريكك…</h2>
-          <p className="mb-5 text-sm text-white/60">
+          <h2 className="mb-2 text-xl font-extrabold">بانتظار شريكك…</h2>
+          <p className="mb-5 text-sm text-ink-soft">
             أرسل هذا الرابط لشريكك ليدخل نفس الغرفة.
           </p>
-          <button
-            onClick={shareGame}
-            className="btn-primary mb-3 w-full rounded-2xl py-3.5 text-base font-bold"
-          >
+          <button onClick={shareGame} className="btn btn-primary mb-3 w-full text-base">
             📲 مشاركة الرابط
           </button>
           <div className="mb-3 flex items-center gap-2">
@@ -425,17 +428,14 @@ export default function GameRoom() {
               value={shareUrl}
               dir="ltr"
               onFocus={(e) => e.currentTarget.select()}
-              className="input-field w-full truncate rounded-xl px-3 py-2.5 text-sm text-white/80"
+              className="input-field w-full truncate px-3 py-2.5 text-sm text-ink-soft"
             />
-            <button
-              onClick={copyLink}
-              className="btn-ghost shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold"
-            >
+            <button onClick={copyLink} className="btn btn-ghost shrink-0 px-4 text-sm">
               {copied ? "✓ تم" : "نسخ"}
             </button>
           </div>
-          <p className="text-xs text-white/40">
-            أو شارك الرمز: <span className="font-bold text-white/70">{code}</span>
+          <p className="text-xs text-ink-soft">
+            أو شارك الرمز: <span className="font-bold text-ink">{code}</span>
           </p>
         </div>
       )}
@@ -468,7 +468,7 @@ export default function GameRoom() {
         (game.status === "playing" || game.status === "finished") &&
         game.word && (
           <div className="flex flex-col gap-4">
-            <div className="glass rounded-2xl px-4 py-2 text-center text-sm text-white/70">
+            <div className="card bg-surface px-4 py-2 text-center text-sm text-ink-soft">
               {isTogether
                 ? `🤝 خمّنا الكلمة معًا${game.category ? ` — ${game.category}` : ""}`
                 : iAmChooser
@@ -476,12 +476,12 @@ export default function GameRoom() {
                 : "🧠 خمّن الكلمة!"}
             </div>
 
-            <div className="glass rounded-3xl p-5">
+            <div className="card bg-surface p-5">
               <Hangman wrong={coopWrongCount} />
               <LivesRow wrong={coopWrongCount} wrongLetters={coopWrongLetters} />
             </div>
 
-            <div className="glass rounded-3xl p-5">
+            <div className="card bg-surface p-5">
               <WordDisplay
                 word={game.word}
                 guessed={game.guessed}
@@ -521,7 +521,7 @@ export default function GameRoom() {
               ))}
 
             {game.status === "playing" && !iAmChooser && (
-              <div className="glass rounded-3xl p-4">
+              <div className="card bg-surface p-4">
                 <Keyboard
                   guessed={game.guessed}
                   wordLetters={coopLetters}
@@ -531,7 +531,7 @@ export default function GameRoom() {
               </div>
             )}
             {game.status === "playing" && iAmChooser && (
-              <p className="text-center text-sm text-white/50">
+              <p className="text-center text-sm text-ink-soft">
                 انتظر بينما يخمّن شريكك…
               </p>
             )}
@@ -559,7 +559,7 @@ export default function GameRoom() {
 
       {bothPresent && isVersus && bothChosen && myWord && (
         <div className="flex flex-col gap-4">
-          <div className="glass rounded-2xl px-4 py-2 text-center text-sm text-white/70">
+          <div className="card bg-surface px-4 py-2 text-center text-sm text-ink-soft">
             {versusOver
               ? "انتهت الجولة"
               : myDone
@@ -568,13 +568,13 @@ export default function GameRoom() {
           </div>
 
           {/* Opponent live race indicator */}
-          <div className="glass flex items-center justify-between rounded-2xl px-4 py-3 text-sm">
-            <span className="text-white/70">خصمك</span>
+          <div className="card flex items-center justify-between bg-surface px-4 py-3 text-sm">
+            <span className="text-ink-soft">خصمك</span>
             <span className="flex items-center gap-3">
-              <span className="text-rose-300">
+              <span className="text-coral">
                 أخطاء: {oppWord ? countWrong(oppWord, oppGuessed) : 0}
               </span>
-              <span className="text-white/60">
+              <span className="text-ink-soft">
                 {oppDone
                   ? oppWord && isSolved(oppWord, oppGuessed)
                     ? "✅ حلّها"
@@ -584,19 +584,19 @@ export default function GameRoom() {
             </span>
           </div>
 
-          <div className="glass rounded-3xl p-5">
+          <div className="card bg-surface p-5">
             <Hangman wrong={myWrongCount} />
             <LivesRow wrong={myWrongCount} wrongLetters={myWrongLetters} />
           </div>
 
-          <div className="glass rounded-3xl p-5">
+          <div className="card bg-surface p-5">
             <WordDisplay word={myWord} guessed={myGuessed} reveal={versusOver} />
           </div>
 
           {versusOver ? (
             <VersusResult game={game} isA={isA} onPlayAgain={playAgainVersus} />
           ) : (
-            <div className="glass rounded-3xl p-4">
+            <div className="card bg-surface p-4">
               <Keyboard
                 guessed={myGuessed}
                 wordLetters={myLetters}
@@ -604,7 +604,7 @@ export default function GameRoom() {
                 disabled={myDone}
               />
               {myDone && (
-                <p className="mt-3 text-center text-sm text-white/60">
+                <p className="mt-3 text-center text-sm text-ink-soft">
                   {isSolved(myWord, myGuessed)
                     ? "🎉 حللت كلمتك! بانتظار خصمك…"
                     : "💀 انتهت محاولاتك. بانتظار خصمك…"}
@@ -645,42 +645,35 @@ function VersusResult({
     <div className="flex flex-col gap-3">
       <div
         className={[
-          "rounded-3xl p-5 text-center",
-          draw
-            ? "bg-white/10 text-white"
-            : iWon
-            ? "bg-emerald-500/15 text-emerald-200"
-            : "bg-rose-500/15 text-rose-200",
+          "card p-5 text-center",
+          draw ? "bg-surface" : iWon ? "bg-success-soft" : "bg-danger-soft",
         ].join(" ")}
       >
-        <div className="mb-1 text-4xl">{draw ? "🤝" : iWon ? "🏆" : "😅"}</div>
-        <p className="text-xl font-bold">
+        <div className="mb-1 animate-stamp text-4xl">{draw ? "🤝" : iWon ? "🏆" : "😅"}</div>
+        <p className="text-xl font-extrabold">
           {draw ? "تعادل!" : iWon ? "فزت! 🎉" : "فاز خصمك"}
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <div className="rounded-xl bg-black/20 p-3">
-            <div className="text-white/60">كلمتك</div>
+          <div className="rounded-md border-2 border-ink bg-surface-strong p-3">
+            <div className="text-ink-soft">كلمتك</div>
             <div className="font-bold" dir="rtl">
               {myWord}
             </div>
-            <div className="mt-1 text-white/60">
+            <div className="mt-1 text-ink-soft">
               أخطاؤك: {myWord ? countWrong(myWord, myGuessed) : 0}
             </div>
           </div>
-          <div className="rounded-xl bg-black/20 p-3">
-            <div className="text-white/60">كلمة خصمك</div>
+          <div className="rounded-md border-2 border-ink bg-surface-strong p-3">
+            <div className="text-ink-soft">كلمة خصمك</div>
             <div className="font-bold" dir="rtl">
               {oppWord}
             </div>
-            <div className="mt-1 text-white/60">
+            <div className="mt-1 text-ink-soft">
               أخطاؤه: {oppWord ? countWrong(oppWord, oppGuessed) : 0}
             </div>
           </div>
         </div>
-        <button
-          onClick={onPlayAgain}
-          className="btn-primary mt-4 rounded-2xl px-6 py-3 font-bold"
-        >
+        <button onClick={onPlayAgain} className="btn btn-primary mt-4 px-6">
           🔄 جولة جديدة
         </button>
       </div>
@@ -712,10 +705,10 @@ function WordPicker({
   cta: string;
 }) {
   return (
-    <div className="glass rounded-3xl p-6">
+    <div className="card bg-surface p-6">
       <div className="mb-1 text-center text-3xl">✍️</div>
-      <h2 className="mb-1 text-center text-xl font-bold">{title}</h2>
-      <p className="mb-5 text-center text-sm text-white/60">{hint}</p>
+      <h2 className="mb-1 text-center text-xl font-extrabold">{title}</h2>
+      <p className="mb-5 text-center text-sm text-ink-soft">{hint}</p>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -723,21 +716,18 @@ function WordPicker({
         placeholder="اكتب الكلمة هنا"
         dir="rtl"
         enterKeyHint="done"
-        className="input-field mb-1 w-full rounded-2xl px-4 py-3 text-center text-2xl font-bold text-white placeholder:text-white/30"
+        className="input-field mb-1 w-full px-4 py-3 text-center text-2xl font-bold text-ink"
         autoFocus
       />
-      <p className="mb-4 text-center text-xs text-white/40">
+      <p className="mb-4 text-center text-xs text-ink-soft">
         خصمك لن يرى الكلمة — فقط عدد الحروف.
       </p>
       {error && (
-        <p className="mb-3 rounded-xl bg-rose-500/15 px-4 py-2 text-center text-sm text-rose-200">
+        <p className="mb-3 rounded-md border-2 border-ink bg-danger-soft px-4 py-2 text-center text-sm text-ink">
           {error}
         </p>
       )}
-      <button
-        onClick={onSubmit}
-        className="btn-primary w-full rounded-2xl py-3 text-lg font-bold"
-      >
+      <button onClick={onSubmit} className="btn btn-primary w-full text-lg">
         {cta}
       </button>
     </div>
@@ -746,10 +736,10 @@ function WordPicker({
 
 function CategoryPicker({ onPick }: { onPick: (cat: Category) => void }) {
   return (
-    <div className="glass rounded-3xl p-6">
+    <div className="card bg-surface p-6">
       <div className="mb-1 text-center text-3xl">🗂️</div>
-      <h2 className="mb-1 text-center text-xl font-bold">اختارا تصنيفًا</h2>
-      <p className="mb-5 text-center text-sm text-white/60">
+      <h2 className="mb-1 text-center text-xl font-extrabold">اختارا تصنيفًا</h2>
+      <p className="mb-5 text-center text-sm text-ink-soft">
         ستظهر كلمة عشوائية من التصنيف، وتحاولان حلّها معًا كفريق.
       </p>
       <div className="grid grid-cols-2 gap-2">
@@ -757,14 +747,14 @@ function CategoryPicker({ onPick }: { onPick: (cat: Category) => void }) {
           <button
             key={cat.id}
             onClick={() => onPick(cat)}
-            className="flex items-center gap-2 rounded-2xl border border-white/12 bg-white/5 p-3 text-right font-bold transition-all hover:-translate-y-0.5 hover:border-fuchsia-400 hover:bg-fuchsia-500/15"
+            className="flex items-center gap-2 rounded-md border-2 border-ink bg-surface-strong p-3 text-right font-bold transition-transform active:translate-y-0.5"
           >
             <span className="text-2xl">{cat.emoji}</span>
             <span>{cat.name}</span>
           </button>
         ))}
       </div>
-      <p className="mt-4 text-center text-xs text-white/40">
+      <p className="mt-4 text-center text-xs text-ink-soft">
         يمكن لأيٍّ منكما اختيار التصنيف.
       </p>
     </div>
@@ -773,10 +763,10 @@ function CategoryPicker({ onPick }: { onPick: (cat: Category) => void }) {
 
 function WaitingCard({ title, sub }: { title: string; sub: string }) {
   return (
-    <div className="glass rounded-3xl p-8 text-center">
+    <div className="card bg-surface p-8 text-center">
       <div className="mb-3 text-4xl animate-floaty">⏳</div>
-      <h2 className="text-xl font-bold">{title}</h2>
-      <p className="mt-2 text-sm text-white/60">{sub}</p>
+      <h2 className="text-xl font-extrabold">{title}</h2>
+      <p className="mt-2 text-sm text-ink-soft">{sub}</p>
     </div>
   );
 }
@@ -790,13 +780,13 @@ function LivesRow({
 }) {
   return (
     <>
-      <div className="mt-3 text-center text-sm text-white/60">
+      <div className="mt-3 text-center text-sm text-ink-soft">
         المحاولات المتبقية:{" "}
-        <span className="font-bold text-white">{Math.max(0, MAX_WRONG - wrong)}</span>{" "}
+        <span className="font-bold text-ink">{Math.max(0, MAX_WRONG - wrong)}</span>{" "}
         / {MAX_WRONG}
       </div>
       {wrongLetters.length > 0 && (
-        <div className="mt-2 text-center text-sm text-rose-300" dir="rtl">
+        <div className="mt-2 text-center text-sm text-coral" dir="rtl">
           حروف خاطئة: {wrongLetters.join(" · ")}
         </div>
       )}
@@ -820,19 +810,16 @@ function ResultBanner({
   return (
     <div
       className={[
-        "rounded-3xl p-5 text-center",
-        won ? "bg-emerald-500/15 text-emerald-200" : "bg-rose-500/15 text-rose-200",
+        "card p-5 text-center",
+        won ? "bg-success-soft" : "bg-danger-soft",
       ].join(" ")}
     >
-      <div className="mb-1 text-4xl">{won ? "🎉" : "💔"}</div>
-      <p className="text-lg font-bold">{title}</p>
-      <p className="mt-1 text-sm opacity-80" dir="rtl">
-        الكلمة كانت: <span className="font-bold">{word}</span>
+      <div className="mb-1 animate-stamp text-4xl">{won ? "🎉" : "💔"}</div>
+      <p className="text-lg font-extrabold">{title}</p>
+      <p className="mt-1 text-sm text-ink-soft" dir="rtl">
+        الكلمة كانت: <span className="font-bold text-ink">{word}</span>
       </p>
-      <button
-        onClick={onPlayAgain}
-        className="btn-primary mt-4 rounded-2xl px-6 py-3 font-bold"
-      >
+      <button onClick={onPlayAgain} className="btn btn-primary mt-4 px-6">
         {playAgainLabel}
       </button>
     </div>
@@ -847,10 +834,7 @@ function HomeButton({
   label: string;
 }) {
   return (
-    <button
-      onClick={() => router.push("/")}
-      className="btn-ghost rounded-2xl px-6 py-3 font-bold"
-    >
+    <button onClick={() => router.push("/")} className="btn btn-ghost px-6">
       {label}
     </button>
   );
@@ -858,7 +842,7 @@ function HomeButton({
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-white/80">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-ink-soft">
       {children}
     </main>
   );
