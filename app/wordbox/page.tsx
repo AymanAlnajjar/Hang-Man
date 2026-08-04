@@ -52,40 +52,33 @@ export default function WordBoxHome() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 pt-safe pb-safe">
-      <Link
-        href="/"
-        className="mb-4 inline-flex items-center gap-1 self-start text-sm text-white/50 hover:text-white"
-      >
-        ← كل الألعاب
+    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col justify-center px-5 pt-safe pb-safe">
+      <Link href="/games" className="mb-4 self-start">
+        <span className="chip">‹ كل الألعاب</span>
       </Link>
 
-      <div className="mb-7 text-center">
+      <div className="mb-6 text-center">
         <div className="mb-3 text-5xl animate-floaty">🔤</div>
-        <h1 className="text-4xl font-extrabold tracking-tight">تكوين الكلمات</h1>
-        <p className="mt-2 text-white/60">
+        <h1 className="text-3xl font-extrabold tracking-tight">تكوين الكلمات</h1>
+        <p className="mt-2 text-sm text-ink-soft">
           شبكة حروف واحدة لكليكما — مرّرا على الحروف المتجاورة لتكوين الكلمات
           (٣ أحرف فأكثر) خلال ٣ جولات متزامنة تبدأ تلقائيًا. الأعلى نقاطًا في
           الجولة يكسب نجمة ⭐ — وصاحب أكثر النجوم يفوز بالمباراة!
         </p>
       </div>
 
-      <div className="glass w-full rounded-3xl p-6">
-        <button
-          onClick={createGame}
-          disabled={busy}
-          className="btn-primary w-full rounded-2xl py-4 text-lg font-bold text-white"
-        >
+      <div className="card w-full bg-surface p-6">
+        <button onClick={createGame} disabled={busy} className="btn btn-primary w-full text-lg">
           {busy ? "جارٍ الإنشاء…" : "➕ إنشاء لعبة جديدة"}
         </button>
 
-        <div className="my-5 flex items-center gap-3 text-white/40">
-          <span className="h-px flex-1 bg-white/15" />
+        <div className="my-5 flex items-center gap-3 text-ink-soft">
+          <span className="h-0.5 flex-1 bg-muted" />
           <span className="text-sm">أو</span>
-          <span className="h-px flex-1 bg-white/15" />
+          <span className="h-0.5 flex-1 bg-muted" />
         </div>
 
-        <label className="mb-2 block text-sm text-white/70">
+        <label className="mb-2 block text-sm font-bold text-ink-soft">
           الانضمام إلى لعبة برمز الغرفة
         </label>
         <div className="flex gap-2">
@@ -97,18 +90,15 @@ export default function WordBoxHome() {
             dir="ltr"
             maxLength={8}
             enterKeyHint="go"
-            className="input-field w-full rounded-2xl px-4 py-3 text-center text-lg font-bold tracking-widest text-white placeholder:text-white/30"
+            className="input-field w-full px-4 py-3 text-center text-lg font-bold tracking-widest text-ink"
           />
-          <button
-            onClick={joinGame}
-            className="btn-ghost shrink-0 rounded-2xl px-5 font-bold text-white"
-          >
+          <button onClick={joinGame} className="btn btn-ghost shrink-0 px-5">
             دخول
           </button>
         </div>
 
         {error && (
-          <p className="mt-4 rounded-xl bg-rose-500/15 px-4 py-2 text-sm text-rose-200">
+          <p className="mt-4 rounded-md border-2 border-ink bg-danger-soft px-4 py-2 text-sm text-ink">
             {error}
           </p>
         )}

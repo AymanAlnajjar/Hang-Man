@@ -2,39 +2,58 @@
 
 import { MAX_WRONG } from "@/lib/game";
 
-// Draws the gallows plus one body part per wrong guess (up to MAX_WRONG).
+// A tulip that loses one petal per wrong guess — a calmer, grown-up stand-in for
+// the classic gallows. Petals remaining = attempts remaining; drop from the
+// outside in so the flower keeps its core until the last mistake.
 export default function Hangman({ wrong }: { wrong: number }) {
-  const w = Math.min(wrong, MAX_WRONG);
-  const stroke = "#f5d0fe";
-  const bad = "#fb7185";
+  const remaining = Math.max(0, MAX_WRONG - Math.min(wrong, MAX_WRONG));
 
-  const parts = [
-    // head
-    <circle key="head" cx="140" cy="80" r="20" fill="none" stroke={bad} strokeWidth="4" />,
-    // body
-    <line key="body" x1="140" y1="100" x2="140" y2="150" stroke={bad} strokeWidth="4" />,
-    // left arm
-    <line key="la" x1="140" y1="115" x2="115" y2="135" stroke={bad} strokeWidth="4" />,
-    // right arm
-    <line key="ra" x1="140" y1="115" x2="165" y2="135" stroke={bad} strokeWidth="4" />,
-    // left leg
-    <line key="ll" x1="140" y1="150" x2="120" y2="185" stroke={bad} strokeWidth="4" />,
-    // right leg
-    <line key="rl" x1="140" y1="150" x2="160" y2="185" stroke={bad} strokeWidth="4" />,
-  ];
+  const ink = "#20243d";
+  const petalFill = ["#ff806c", "#ff806c", "#5267e8", "#5267e8", "#ffd369", "#ffd369"];
+  // Fanned petals, ordered inner→outer so slice(0, remaining) drops outer first.
+  const angles = [-10, 10, -32, 32, -54, 54];
 
   return (
-    <svg viewBox="0 0 220 220" className="mx-auto w-full max-w-[180px] sm:max-w-[220px]" role="img" aria-label="رسم المشنقة">
-      {/* gallows */}
-      <line x1="20" y1="205" x2="100" y2="205" stroke={stroke} strokeWidth="5" strokeLinecap="round" />
-      <line x1="55" y1="205" x2="55" y2="20" stroke={stroke} strokeWidth="5" strokeLinecap="round" />
-      <line x1="55" y1="20" x2="140" y2="20" stroke={stroke} strokeWidth="5" strokeLinecap="round" />
-      <line x1="140" y1="20" x2="140" y2="60" stroke={stroke} strokeWidth="5" strokeLinecap="round" />
-      {parts.slice(0, w).map((p) => (
-        <g key={(p as any).key} className="animate-pop" style={{ transformOrigin: "center" }}>
-          {p}
-        </g>
-      ))}
+    <svg
+      viewBox="0 0 220 220"
+      className="mx-auto w-full max-w-[170px] sm:max-w-[200px]"
+      role="img"
+      aria-label={`الوردة تبقّى منها ${remaining} من ${MAX_WRONG} بتلات`}
+    >
+      {/* stem */}
+      <line x1="110" y1="200" x2="110" y2="104" stroke="#78ad8a" strokeWidth="6" strokeLinecap="round" />
+      {/* leaves */}
+      <ellipse cx="88" cy="150" rx="20" ry="10" fill="#dcecdf" stroke={ink} strokeWidth="2.5" transform="rotate(-28 88 150)" />
+      <ellipse cx="132" cy="168" rx="18" ry="9" fill="#dcecdf" stroke={ink} strokeWidth="2.5" transform="rotate(26 132 168)" />
+
+      {/* calyx / cup */}
+      <path d="M92 104 Q110 122 128 104 L124 96 Q110 104 96 96 Z" fill="#78ad8a" stroke={ink} strokeWidth="2.5" />
+
+      {/* petals (inner kept longest) */}
+      {angles.map((a, i) => {
+        const shown = i < remaining;
+        if (!shown) return null;
+        return (
+          <ellipse
+            key={i}
+            cx="110"
+            cy="70"
+            rx="15"
+            ry="32"
+            fill={petalFill[i]}
+            stroke={ink}
+            strokeWidth="2.5"
+            transform={`rotate(${a} 110 102)`}
+            className="animate-pop"
+            style={{ transformOrigin: "110px 102px" }}
+          />
+        );
+      })}
+
+      {/* when bare, a small dropped petal at the base to soften the loss */}
+      {remaining === 0 && (
+        <ellipse cx="140" cy="196" rx="12" ry="6" fill="#ffe2dc" stroke={ink} strokeWidth="2" transform="rotate(18 140 196)" />
+      )}
     </svg>
   );
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getPlayerId } from "@/lib/player";
+import { saveRecentRoom } from "@/lib/recent";
 import { normalizeArabic } from "@/lib/arabic";
 import Chat from "@/components/Chat";
 
@@ -50,6 +51,7 @@ export default function MeldRoom() {
     const pid = getPlayerId();
     setMe(pid);
     setShareUrl(`${window.location.origin}/meld/${code}`);
+    saveRecentRoom("meld", code);
     let cancelled = false;
 
     async function init() {
@@ -239,40 +241,37 @@ export default function MeldRoom() {
   if (!game) return <Centered>…</Centered>;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col px-4 pt-safe pb-safe">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col px-4 pt-safe pb-safe">
       {/* Header */}
       <header className="mb-4 flex items-center justify-between">
         <button
           onClick={() => router.push("/")}
-          className="text-white/50 hover:text-white"
+          className="grid h-10 w-10 place-items-center rounded-md border-2 border-ink bg-surface-strong text-ink"
           aria-label="خروج"
         >
           ✕
         </button>
         <div className="text-center">
-          <div className="text-xs text-white/50">رمز الغرفة</div>
-          <div dir="ltr" className="text-lg font-bold tracking-widest">
+          <div className="text-xs text-ink-soft">رمز الغرفة</div>
+          <div dir="ltr" className="text-lg font-extrabold tracking-widest">
             {code}
           </div>
         </div>
         <div className="text-left">
-          <div className="text-xs text-white/50">المحاولة {game.round}</div>
-          <div className="text-xs font-bold text-fuchsia-300">🧠 توارد</div>
+          <div className="text-xs text-ink-soft">المحاولة {game.round}</div>
+          <div className="text-xs font-bold text-primary-dark">🧠 توارد</div>
         </div>
       </header>
 
       {/* Waiting */}
       {!bothPresent && (
-        <div className="glass rounded-3xl p-6 text-center">
+        <div className="card bg-surface p-6 text-center">
           <div className="mb-3 text-4xl animate-floaty">🔗</div>
-          <h2 className="mb-2 text-xl font-bold">بانتظار شريكك…</h2>
-          <p className="mb-5 text-sm text-white/60">
+          <h2 className="mb-2 text-xl font-extrabold">بانتظار شريكك…</h2>
+          <p className="mb-5 text-sm text-ink-soft">
             أرسل الرابط لشريكك ليدخل نفس الغرفة، وتبدآن اللعب.
           </p>
-          <button
-            onClick={shareGame}
-            className="btn-primary mb-3 w-full rounded-2xl py-3.5 text-base font-bold"
-          >
+          <button onClick={shareGame} className="btn btn-primary mb-3 w-full text-base">
             📲 مشاركة الرابط
           </button>
           <div className="flex items-center gap-2">
@@ -281,12 +280,9 @@ export default function MeldRoom() {
               value={shareUrl}
               dir="ltr"
               onFocus={(e) => e.currentTarget.select()}
-              className="input-field w-full truncate rounded-xl px-3 py-2.5 text-sm text-white/80"
+              className="input-field w-full truncate px-3 py-2.5 text-sm text-ink-soft"
             />
-            <button
-              onClick={copyLink}
-              className="btn-ghost shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold"
-            >
+            <button onClick={copyLink} className="btn btn-ghost shrink-0 px-4 text-sm">
               {copied ? "✓ تم" : "نسخ"}
             </button>
           </div>
@@ -297,20 +293,17 @@ export default function MeldRoom() {
         <div className="flex flex-col gap-4">
           {/* ---- WIN ---- */}
           {matched && (
-            <div className="rounded-3xl bg-emerald-500/15 p-6 text-center text-emerald-100">
-              <div className="mb-1 text-5xl">🎉</div>
+            <div className="card bg-success-soft p-6 text-center">
+              <div className="mb-1 animate-stamp text-5xl">🎉</div>
               <p className="text-2xl font-extrabold">تطابقتما!</p>
               <p className="mt-2 text-lg" dir="rtl">
                 الكلمة المشتركة:{" "}
                 <span className="font-bold">{game.word_a}</span>
               </p>
-              <p className="mt-1 text-sm opacity-80">
+              <p className="mt-1 text-sm text-ink-soft">
                 في المحاولة رقم {game.round} 🧠
               </p>
-              <button
-                onClick={newGame}
-                className="btn-primary mt-5 rounded-2xl px-8 py-3 font-bold"
-              >
+              <button onClick={newGame} className="btn btn-primary mt-5 px-8">
                 🔄 لعبة جديدة
               </button>
             </div>
@@ -318,21 +311,18 @@ export default function MeldRoom() {
 
           {/* ---- REVEAL (no match) ---- */}
           {!matched && bothSubmitted && (
-            <div className="glass rounded-3xl p-5 text-center">
-              <p className="mb-3 text-sm text-white/60">لم تتطابقا… بعد!</p>
+            <div className="card bg-surface p-5 text-center">
+              <p className="mb-3 text-sm text-ink-soft">لم تتطابقا… بعد!</p>
               <div className="mb-4 flex items-stretch justify-center gap-3">
-                <RevealCard label="أنت" word={isA ? game.word_a : game.word_b} tone="emerald" />
-                <div className="flex items-center text-2xl text-white/30">↔</div>
-                <RevealCard label="شريكك" word={isA ? game.word_b : game.word_a} tone="rose" />
+                <RevealCard label="أنت" word={isA ? game.word_a : game.word_b} tone="primary" />
+                <div className="flex items-center text-2xl text-ink-soft">↔</div>
+                <RevealCard label="شريكك" word={isA ? game.word_b : game.word_a} tone="coral" />
               </div>
-              <p className="mb-4 text-sm text-white/70">
-                اكتبا الآن كلمة <span className="font-bold">تجمع بين الكلمتين</span> —
+              <p className="mb-4 text-sm text-ink-soft">
+                اكتبا الآن كلمة <span className="font-bold text-ink">تجمع بين الكلمتين</span> —
                 وحاولا الوصول إلى الكلمة نفسها!
               </p>
-              <button
-                onClick={nextRound}
-                className="btn-primary w-full rounded-2xl py-3 font-bold"
-              >
+              <button onClick={nextRound} className="btn btn-primary w-full">
                 المحاولة التالية ▶
               </button>
             </div>
@@ -340,14 +330,14 @@ export default function MeldRoom() {
 
           {/* ---- INPUT / WAITING ---- */}
           {!matched && !bothSubmitted && (
-            <div className="glass rounded-3xl p-6 text-center">
+            <div className="card bg-surface p-6 text-center">
               {!iSubmitted ? (
                 <>
                   <div className="mb-1 text-3xl">✍️</div>
-                  <h2 className="mb-1 text-xl font-bold">
+                  <h2 className="mb-1 text-xl font-extrabold">
                     {game.round === 1 ? "اكتب أي كلمة" : "اكتب كلمة تقارب الكلمتين"}
                   </h2>
-                  <p className="mb-4 text-sm text-white/60">
+                  <p className="mb-4 text-sm text-ink-soft">
                     {game.round === 1
                       ? "أول كلمة تخطر ببالك — لن يراها شريكك حتى ترسلا معًا."
                       : "فكّر في كلمة وسط بين كلمتيكما السابقتين."}
@@ -360,12 +350,12 @@ export default function MeldRoom() {
                     dir="rtl"
                     enterKeyHint="send"
                     autoFocus
-                    className="input-field mb-3 w-full rounded-2xl px-4 py-3 text-center text-2xl font-bold text-white placeholder:text-white/30"
+                    className="input-field mb-3 w-full px-4 py-3 text-center text-2xl font-bold text-ink"
                   />
                   <button
                     onClick={submitWord}
                     disabled={!input.trim()}
-                    className="btn-primary w-full rounded-2xl py-3 text-lg font-bold disabled:opacity-40"
+                    className="btn btn-primary w-full text-lg"
                   >
                     إرسال
                   </button>
@@ -373,17 +363,14 @@ export default function MeldRoom() {
               ) : (
                 <>
                   <div className="mb-2 text-4xl animate-floaty">⏳</div>
-                  <h2 className="text-xl font-bold">أرسلت كلمتك ✓</h2>
-                  <p className="mt-2 text-sm text-white/60">
+                  <h2 className="text-xl font-extrabold">أرسلت كلمتك ✓</h2>
+                  <p className="mt-2 text-sm text-ink-soft">
                     بانتظار شريكك ليرسل كلمته…
                   </p>
-                  <p className="mt-3 text-xs text-white/40">
+                  <p className="mt-3 text-xs text-ink-soft">
                     (كلمتك محفوظة — ستُكشفان معًا)
                   </p>
-                  <button
-                    onClick={changeMyWord}
-                    className="btn-ghost mt-4 rounded-2xl px-5 py-2 text-sm font-bold"
-                  >
+                  <button onClick={changeMyWord} className="btn btn-ghost mt-4 min-h-[40px] px-5 text-sm">
                     ✎ تغيير كلمتي
                   </button>
                 </>
@@ -393,8 +380,8 @@ export default function MeldRoom() {
 
           {/* ---- History of attempts ---- */}
           {game.history.length > 0 && (
-            <div className="glass rounded-3xl p-4">
-              <div className="mb-2 text-sm text-white/60">
+            <div className="card bg-surface p-4">
+              <div className="mb-2 text-sm text-ink-soft">
                 المحاولات السابقة ({game.history.length})
               </div>
               <div className="flex flex-col gap-2">
@@ -404,13 +391,13 @@ export default function MeldRoom() {
                   .map((h) => (
                     <div
                       key={h.round}
-                      className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2 text-sm"
+                      className="flex items-center justify-between rounded-md border-2 border-ink bg-surface-strong px-3 py-2 text-sm"
                     >
-                      <span className="text-white/40">#{h.round}</span>
+                      <span className="text-ink-soft">#{h.round}</span>
                       <span dir="rtl" className="flex items-center gap-2 font-bold">
-                        <span className="text-emerald-200">{isA ? h.a : h.b}</span>
-                        <span className="text-white/30">↔</span>
-                        <span className="text-rose-200">{isA ? h.b : h.a}</span>
+                        <span className="text-primary-dark">{isA ? h.a : h.b}</span>
+                        <span className="text-ink-soft">↔</span>
+                        <span className="text-coral">{isA ? h.b : h.a}</span>
                       </span>
                     </div>
                   ))}
@@ -432,21 +419,21 @@ function RevealCard({
 }: {
   label: string;
   word: string | null;
-  tone: "emerald" | "rose";
+  tone: "primary" | "coral";
 }) {
   return (
     <div
       className={[
-        "flex min-w-[110px] flex-col items-center justify-center rounded-2xl px-4 py-3",
-        tone === "emerald" ? "bg-emerald-500/15" : "bg-rose-500/15",
+        "flex min-w-[110px] flex-col items-center justify-center rounded-md border-2 border-ink px-4 py-3",
+        tone === "primary" ? "bg-primary-soft" : "bg-coral-soft",
       ].join(" ")}
     >
-      <div className="text-xs text-white/50">{label}</div>
+      <div className="text-xs text-ink-soft">{label}</div>
       <div
         dir="rtl"
         className={[
           "mt-1 text-xl font-extrabold",
-          tone === "emerald" ? "text-emerald-200" : "text-rose-200",
+          tone === "primary" ? "text-primary-dark" : "text-coral",
         ].join(" ")}
       >
         {word}
@@ -457,10 +444,7 @@ function RevealCard({
 
 function BackHome({ router }: { router: ReturnType<typeof useRouter> }) {
   return (
-    <button
-      onClick={() => router.push("/")}
-      className="btn-ghost rounded-2xl px-6 py-3 font-bold"
-    >
+    <button onClick={() => router.push("/")} className="btn btn-ghost px-6">
       كل الألعاب
     </button>
   );
@@ -468,7 +452,7 @@ function BackHome({ router }: { router: ReturnType<typeof useRouter> }) {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-white/80">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-ink-soft">
       {children}
     </main>
   );

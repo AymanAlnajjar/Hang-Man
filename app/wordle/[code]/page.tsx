@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getPlayerId } from "@/lib/player";
+import { saveRecentRoom } from "@/lib/recent";
 import { normalizeArabic } from "@/lib/arabic";
 import {
   loadFullDictionary,
@@ -55,13 +56,14 @@ function newTarget(len: number): string {
   );
 }
 
-const MARK_COLORS: Record<Mark, { bg: string; fg: string }> = {
-  correct: { bg: "#16a34a", fg: "#ffffff" }, // vivid green
-  present: { bg: "#eab308", fg: "#3d2c00" }, // bright yellow, dark text
-  absent: { bg: "#3f3f46", fg: "#d4d4d8" }, // dark gray
+// Wordle tiles keep clear, high-contrast states within the editorial palette.
+const MARK_COLORS: Record<Mark, { bg: string; fg: string; label: string }> = {
+  correct: { bg: "#4f9d6b", fg: "#ffffff", label: "بمكانه" },
+  present: { bg: "#ffd369", fg: "#20243d", label: "بمكان خاطئ" },
+  absent: { bg: "#a8a49b", fg: "#20243d", label: "غير موجود" },
 };
-const markBg = (m: Mark | null): string => (m ? MARK_COLORS[m].bg : "transparent");
-const markFg = (m: Mark | null): string => (m ? MARK_COLORS[m].fg : "#ffffff");
+const markBg = (m: Mark | null): string => (m ? MARK_COLORS[m].bg : "#fffaf1");
+const markFg = (m: Mark | null): string => (m ? MARK_COLORS[m].fg : "#20243d");
 const TILE = 52; // fixed tile size so rows never resize (fits narrow phones)
 
 export default function WordleRoom() {
@@ -74,6 +76,8 @@ export default function WordleRoom() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [current, setCurrent] = useState("");
   const [flash, setFlash] = useState<string | null>(null);
+  const [badGuess, setBadGuess] = useState(0); // bumps to remount+replay the shake
+  const [shaking, setShaking] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const claimedRef = useRef(false);
@@ -83,6 +87,7 @@ export default function WordleRoom() {
     const pid = getPlayerId();
     setMe(pid);
     setShareUrl(`${window.location.origin}/wordle/${code}`);
+    saveRecentRoom("wordle", code);
     let cancelled = false;
 
     async function init() {
@@ -205,15 +210,25 @@ export default function WordleRoom() {
   };
   const del = () => setCurrent((c) => c.slice(0, -1));
 
+  // Remount the active row (badGuess) and shake it briefly, then stop so the
+  // shake doesn't replay when the row advances after a later valid guess.
+  const triggerShake = useCallback(() => {
+    setBadGuess((n) => n + 1);
+    setShaking(true);
+    setTimeout(() => setShaking(false), 350);
+  }, []);
+
   const submitGuess = useCallback(async () => {
     if (!game || iDone || bothDone || !target) return;
     const guess = normalizeArabic(current);
     if (guess.length !== wordLen) {
       setFlash(`الكلمة ${wordLen} أحرف`);
+      triggerShake();
       return;
     }
     if (!isWord(guess)) {
-      setFlash("ليست كلمة معروفة");
+      setFlash("لم نعثر على هذه الكلمة");
+      triggerShake();
       return;
     }
     const nextGuesses = [...myGuesses, guess];
@@ -224,7 +239,7 @@ export default function WordleRoom() {
     setGame({ ...game, ...patch });
     setCurrent("");
     await supabase.from("wordle_games").update(patch).eq("id", code);
-  }, [game, iDone, bothDone, target, current, wordLen, maxGuesses, myGuesses, isA, code]);
+  }, [game, iDone, bothDone, target, current, wordLen, maxGuesses, myGuesses, isA, code, triggerShake]);
 
   const nextWord = useCallback(async () => {
     if (!game || !bothDone || advancingRef.current) return;
@@ -294,31 +309,35 @@ export default function WordleRoom() {
   const oppWins = isA ? game.wins_b : game.wins_a;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col px-4 pt-safe pb-safe">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col px-4 pt-safe pb-safe">
       {/* Header */}
       <header className="mb-2 flex items-center justify-between">
-        <button onClick={() => router.push("/")} className="text-white/50 hover:text-white" aria-label="خروج">
+        <button
+          onClick={() => router.push("/")}
+          className="grid h-10 w-10 place-items-center rounded-md border-2 border-ink bg-surface-strong text-ink"
+          aria-label="خروج"
+        >
           ✕
         </button>
         <div className="flex items-center gap-4">
-          <Pill label="أنت" score={myWins} color="emerald" />
-          <span className="text-xs text-white/40">الفوز</span>
-          <Pill label="خصمك" score={oppWins} color="rose" />
+          <Pill label="أنت" score={myWins} color="primary" />
+          <span className="text-xs text-ink-soft">الفوز</span>
+          <Pill label="خصمك" score={oppWins} color="coral" />
         </div>
-        <div dir="ltr" className="text-xs font-bold tracking-widest text-white/50">
+        <div dir="ltr" className="text-xs font-bold tracking-widest text-ink-soft">
           {code}
         </div>
       </header>
 
       {/* Waiting */}
       {!bothPresent && (
-        <div className="glass mt-4 rounded-3xl p-6 text-center">
+        <div className="card mt-4 bg-surface p-6 text-center">
           <div className="mb-3 text-4xl animate-floaty">🔗</div>
-          <h2 className="mb-2 text-xl font-bold">بانتظار شريكك…</h2>
-          <p className="mb-5 text-sm text-white/60">
+          <h2 className="mb-2 text-xl font-extrabold">بانتظار شريكك…</h2>
+          <p className="mb-5 text-sm text-ink-soft">
             أرسل الرابط لشريكك ليدخل نفس الغرفة، وتحصلان على نفس الكلمة.
           </p>
-          <button onClick={shareGame} className="btn-primary mb-3 w-full rounded-2xl py-3.5 text-base font-bold">
+          <button onClick={shareGame} className="btn btn-primary mb-3 w-full text-base">
             📲 مشاركة الرابط
           </button>
           <div className="flex items-center gap-2">
@@ -327,9 +346,9 @@ export default function WordleRoom() {
               value={shareUrl}
               dir="ltr"
               onFocus={(e) => e.currentTarget.select()}
-              className="input-field w-full truncate rounded-xl px-3 py-2.5 text-sm text-white/80"
+              className="input-field w-full truncate px-3 py-2.5 text-sm text-ink-soft"
             />
-            <button onClick={copyLink} className="btn-ghost shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold">
+            <button onClick={copyLink} className="btn btn-ghost shrink-0 px-4 text-sm">
               {copied ? "✓ تم" : "نسخ"}
             </button>
           </div>
@@ -340,9 +359,9 @@ export default function WordleRoom() {
         <>
           {/* Opponent progress — count only (never the colours, to avoid leaking
               the shared answer) */}
-          <div className="glass mb-2 flex items-center justify-between rounded-2xl px-4 py-2 text-sm">
-            <span className="text-white/60">تقدّم خصمك</span>
-            <span className="font-bold text-white/80">
+          <div className="card mb-2 flex items-center justify-between bg-surface px-4 py-2 text-sm">
+            <span className="text-ink-soft">تقدّم خصمك</span>
+            <span className="font-bold text-ink">
               {isSolved(oppGuesses, target)
                 ? `✅ حلّها في ${oppGuesses.length}`
                 : iDone || bothDone
@@ -354,14 +373,22 @@ export default function WordleRoom() {
           </div>
 
           {/* Guess grid */}
-          <div className="mx-auto flex flex-col gap-1.5 py-2">
+          <div className="mx-auto flex flex-col gap-1.5 py-2" aria-live="polite">
             {Array.from({ length: maxGuesses }).map((_, row) => {
               const submitted = row < myGuesses.length;
               const isCurrent = !iDone && row === myGuesses.length;
               const rowWord = submitted ? myGuesses[row] : isCurrent ? current : "";
               const marks = submitted ? scoreGuess(myGuesses[row], target) : null;
               return (
-                <div key={row} dir="rtl" className="flex justify-center gap-1.5">
+                <div
+                  // Remount the active row on a bad guess so the shake replays.
+                  key={isCurrent ? `cur-${badGuess}` : row}
+                  dir="rtl"
+                  className={[
+                    "flex justify-center gap-1.5",
+                    isCurrent && shaking ? "animate-shake" : "",
+                  ].join(" ")}
+                >
                   {Array.from({ length: wordLen }).map((_, col) => {
                     const ch = rowWord[col] || "";
                     const mark = marks ? marks[col] : null;
@@ -369,17 +396,20 @@ export default function WordleRoom() {
                     return (
                       <div
                         key={col}
-                        className="grid place-items-center rounded-md text-3xl font-extrabold"
+                        aria-label={
+                          mark ? `${ch} — ${MARK_COLORS[mark].label}` : ch || "فارغ"
+                        }
+                        className={[
+                          "grid place-items-center rounded-md border-2 border-ink text-3xl font-extrabold",
+                          submitted ? "animate-flip" : "",
+                        ].join(" ")}
                         style={{
                           width: TILE,
                           height: TILE,
                           background: markBg(mark),
                           color: markFg(mark),
-                          border: mark
-                            ? "none"
-                            : filledEmpty
-                            ? "2px solid rgba(255,255,255,0.55)"
-                            : "2px solid rgba(255,255,255,0.16)",
+                          outline: filledEmpty ? "2px solid #5267e8" : "none",
+                          outlineOffset: "-4px",
                         }}
                       >
                         {ch}
@@ -392,48 +422,46 @@ export default function WordleRoom() {
           </div>
 
           {!bothDone && (
-            <div className="mx-auto mt-1 flex items-center justify-center gap-3 text-[11px] text-white/55">
+            <div className="mx-auto mt-1 flex items-center justify-center gap-3 text-[11px] text-ink-soft">
               <span className="flex items-center gap-1">
-                <i className="inline-block h-3 w-3 rounded-sm" style={{ background: "#16a34a" }} />
+                <i className="inline-block h-3 w-3 rounded-sm border border-ink" style={{ background: "#4f9d6b" }} />
                 بمكانه
               </span>
               <span className="flex items-center gap-1">
-                <i className="inline-block h-3 w-3 rounded-sm" style={{ background: "#eab308" }} />
+                <i className="inline-block h-3 w-3 rounded-sm border border-ink" style={{ background: "#ffd369" }} />
                 بمكان خاطئ
               </span>
               <span className="flex items-center gap-1">
-                <i className="inline-block h-3 w-3 rounded-sm" style={{ background: "#3f3f46" }} />
+                <i className="inline-block h-3 w-3 rounded-sm border border-ink" style={{ background: "#a8a49b" }} />
                 غير موجود
               </span>
             </div>
           )}
 
-          <div className="h-5 text-center text-sm text-rose-300">{flash}</div>
+          <div className="h-5 text-center text-sm font-bold text-danger" aria-live="assertive">
+            {flash}
+          </div>
 
           {/* Finished */}
           {bothDone ? (
             <div
               className={[
-                "mt-2 rounded-3xl p-5 text-center",
-                winner === "draw"
-                  ? "bg-white/10 text-white"
-                  : iWon
-                  ? "bg-emerald-500/15 text-emerald-200"
-                  : "bg-rose-500/15 text-rose-200",
+                "card mt-2 p-5 text-center",
+                winner === "draw" ? "bg-surface" : iWon ? "bg-success-soft" : "bg-danger-soft",
               ].join(" ")}
             >
-              <div className="mb-1 text-4xl">{winner === "draw" ? "🤝" : iWon ? "🏆" : "😅"}</div>
+              <div className="mb-1 animate-stamp text-4xl">{winner === "draw" ? "🤝" : iWon ? "🏆" : "😅"}</div>
               <p className="text-xl font-extrabold">
                 {winner === "draw" ? "تعادل!" : iWon ? "فزت! 🎉" : "فاز خصمك"}
               </p>
-              <p className="mt-2 text-sm opacity-80" dir="rtl">
-                الكلمة: <span className="font-bold">{target}</span>
+              <p className="mt-2 text-sm text-ink-soft" dir="rtl">
+                الكلمة: <span className="font-bold text-ink">{target}</span>
               </p>
-              <p className="mt-1 text-xs opacity-70">
+              <p className="mt-1 text-xs text-ink-soft">
                 {iSolved ? `حللتها في ${myGuesses.length}` : "لم تحلّها"} · خصمك:{" "}
                 {isSolved(oppGuesses, target) ? `${oppGuesses.length}` : "لم يحلّها"}
               </p>
-              <button onClick={nextWord} className="btn-primary mt-4 rounded-2xl px-8 py-3 font-bold">
+              <button onClick={nextWord} className="btn btn-primary mt-4 px-8">
                 🔄 كلمة جديدة
               </button>
               <div className="mt-3">
@@ -446,7 +474,7 @@ export default function WordleRoom() {
               </div>
             </div>
           ) : iDone ? (
-            <p className="mt-2 text-center text-sm text-white/60">
+            <p className="mt-2 text-center text-sm text-ink-soft">
               {iSolved ? "🎉 حللتها! بانتظار خصمك…" : "انتهت محاولاتك. بانتظار خصمك…"}
             </p>
           ) : (
@@ -457,7 +485,7 @@ export default function WordleRoom() {
                   {r === KEY_ROWS.length - 1 && (
                     <button
                       onClick={submitGuess}
-                      className="rounded-md bg-fuchsia-600/80 px-3 text-sm font-bold text-white"
+                      className="rounded-md border-2 border-ink bg-primary px-3 text-sm font-bold text-white"
                     >
                       تحقّق
                     </button>
@@ -466,11 +494,11 @@ export default function WordleRoom() {
                     <button
                       key={k}
                       onClick={() => addLetter(k)}
-                      className="h-12 min-w-[28px] flex-1 rounded-md text-lg font-bold"
+                      className="h-12 min-w-[28px] flex-1 rounded-md border-2 border-ink text-lg font-bold"
                       style={{
                         maxWidth: 36,
-                        background: kbStates[k] ? markBg(kbStates[k]) : "rgba(255,255,255,0.14)",
-                        color: kbStates[k] ? markFg(kbStates[k]) : "#ffffff",
+                        background: kbStates[k] ? markBg(kbStates[k]) : "#fffaf1",
+                        color: kbStates[k] ? markFg(kbStates[k]) : "#20243d",
                       }}
                     >
                       {k}
@@ -479,7 +507,7 @@ export default function WordleRoom() {
                   {r === KEY_ROWS.length - 1 && (
                     <button
                       onClick={del}
-                      className="rounded-md bg-white/15 px-3 text-lg font-bold text-white"
+                      className="rounded-md border-2 border-ink bg-surface-strong px-3 text-lg font-bold text-ink"
                     >
                       ⌫
                     </button>
@@ -496,11 +524,16 @@ export default function WordleRoom() {
   );
 }
 
-function Pill({ label, score, color }: { label: string; score: number; color: "emerald" | "rose" }) {
+function Pill({ label, score, color }: { label: string; score: number; color: "primary" | "coral" }) {
   return (
     <div className="text-center">
-      <div className="text-[11px] text-white/50">{label}</div>
-      <div className={["text-lg font-extrabold tabular-nums", color === "emerald" ? "text-emerald-300" : "text-rose-300"].join(" ")}>
+      <div className="text-[11px] text-ink-soft">{label}</div>
+      <div
+        className={[
+          "text-lg font-extrabold tabular-nums",
+          color === "primary" ? "text-primary-dark" : "text-coral",
+        ].join(" ")}
+      >
         {score}
       </div>
     </div>
@@ -509,7 +542,7 @@ function Pill({ label, score, color }: { label: string; score: number; color: "e
 
 function BackHome({ router }: { router: ReturnType<typeof useRouter> }) {
   return (
-    <button onClick={() => router.push("/")} className="btn-ghost rounded-2xl px-6 py-3 font-bold">
+    <button onClick={() => router.push("/")} className="btn btn-ghost px-6">
       كل الألعاب
     </button>
   );
@@ -517,7 +550,7 @@ function BackHome({ router }: { router: ReturnType<typeof useRouter> }) {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-white/80">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-ink-soft">
       {children}
     </main>
   );

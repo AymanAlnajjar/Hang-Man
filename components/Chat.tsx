@@ -98,12 +98,12 @@ export default function Chat({
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="الدردشة"
-        className="fixed bottom-4 left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full text-2xl shadow-lg"
-        style={{ background: "linear-gradient(135deg,#d946ef,#8b5cf6)" }}
+        className="fixed bottom-5 left-4 z-40 flex h-14 w-14 items-center justify-center rounded-md border-2 border-ink bg-coral text-2xl text-ink shadow-card-sm active:translate-y-0.5"
+        style={{ zIndex: "var(--z-overlay)", bottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
       >
         {open ? "✕" : "💬"}
         {!open && unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-1.5 text-xs font-bold text-white">
+          <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-pill border-2 border-ink bg-danger px-1.5 text-xs font-bold text-white">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -111,21 +111,21 @@ export default function Chat({
 
       {/* Slide-up panel */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
+        <div className="fixed inset-0 flex items-end justify-center" style={{ zIndex: "var(--z-modal)" }}>
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-ink/45"
             onClick={() => setOpen(false)}
           />
           <div
             dir="rtl"
-            className="glass relative flex w-full max-w-lg flex-col rounded-t-3xl"
+            className="relative flex w-full max-w-[480px] flex-col rounded-t-lg border-2 border-b-0 border-ink bg-surface"
             style={{ height: "72dvh" }}
           >
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+            <div className="flex items-center justify-between border-b-2 border-ink px-5 py-3">
               <span className="font-bold">💬 الدردشة</span>
               <button
                 onClick={() => setOpen(false)}
-                className="text-white/60 hover:text-white"
+                className="grid h-9 w-9 place-items-center rounded-md border-2 border-ink bg-surface-strong text-ink"
                 aria-label="إغلاق"
               >
                 ✕
@@ -137,7 +137,7 @@ export default function Chat({
               className="flex-1 space-y-2 overflow-y-auto px-4 py-3"
             >
               {messages.length === 0 ? (
-                <p className="mt-10 text-center text-sm text-white/40">
+                <p className="mt-10 text-center text-sm text-ink-soft">
                   ابدأ المحادثة… قل شيئًا لطيفًا ❤️
                 </p>
               ) : (
@@ -150,10 +150,10 @@ export default function Chat({
                     >
                       <div
                         className={[
-                          "max-w-[78%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[15px] leading-relaxed",
+                          "max-w-[78%] whitespace-pre-wrap break-words rounded-md border-2 border-ink px-3.5 py-2 text-[15px] leading-relaxed",
                           mine
-                            ? "rounded-bl-md bg-fuchsia-600/80 text-white"
-                            : "rounded-br-md bg-white/12 text-white",
+                            ? "bg-primary text-white"
+                            : "bg-surface-strong text-ink",
                         ].join(" ")}
                       >
                         {m.body}
@@ -165,7 +165,7 @@ export default function Chat({
             </div>
 
             <div
-              className="flex items-center gap-2 border-t border-white/10 p-3"
+              className="flex items-center gap-2 border-t-2 border-ink p-3"
               style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
             >
               <input
@@ -174,12 +174,12 @@ export default function Chat({
                 onKeyDown={(e) => e.key === "Enter" && send()}
                 placeholder="اكتب رسالة…"
                 enterKeyHint="send"
-                className="input-field w-full rounded-2xl px-4 py-3 text-base text-white placeholder:text-white/30"
+                className="input-field w-full px-4 py-3 text-base text-ink"
               />
               <button
                 onClick={send}
                 disabled={!text.trim()}
-                className="btn-primary shrink-0 rounded-2xl px-5 py-3 font-bold disabled:opacity-40"
+                className="btn btn-primary shrink-0"
               >
                 إرسال
               </button>

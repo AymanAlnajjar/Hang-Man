@@ -11,6 +11,7 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getPlayerId } from "@/lib/player";
+import { saveRecentRoom } from "@/lib/recent";
 import { normalizeArabic } from "@/lib/arabic";
 import {
   CELLS,
@@ -80,6 +81,7 @@ export default function WordGridRoom() {
     const pid = getPlayerId();
     setMe(pid);
     setShareUrl(`${window.location.origin}/wordbox/${code}`);
+    saveRecentRoom("wordbox", code);
     let cancelled = false;
 
     async function init() {
@@ -390,36 +392,40 @@ export default function WordGridRoom() {
   const timePct = inPlay ? (playRemaining / playS) * 100 : 0;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col px-4 pt-safe pb-safe">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col px-4 pt-safe pb-safe">
       {/* Header: stars */}
       <header className="mb-2 flex items-center justify-between">
-        <button onClick={() => router.push("/")} className="text-white/50 hover:text-white" aria-label="خروج">
+        <button
+          onClick={() => router.push("/")}
+          className="grid h-10 w-10 place-items-center rounded-md border-2 border-ink bg-surface-strong text-ink"
+          aria-label="خروج"
+        >
           ✕
         </button>
         <div className="flex items-center gap-4">
-          <Stars label="أنت" count={myStars} total={maxR} color="emerald" />
-          <span className="text-xs text-white/40">مقابل</span>
-          <Stars label="خصمك" count={oppStars} total={maxR} color="rose" />
+          <Stars label="أنت" count={myStars} total={maxR} color="primary" />
+          <span className="text-xs text-ink-soft">مقابل</span>
+          <Stars label="خصمك" count={oppStars} total={maxR} color="coral" />
         </div>
-        <div dir="ltr" className="text-xs font-bold tracking-widest text-white/50">
+        <div dir="ltr" className="text-xs font-bold tracking-widest text-ink-soft">
           {code}
         </div>
       </header>
 
       {/* Waiting */}
       {!bothPresent && (
-        <div className="glass mt-4 rounded-3xl p-6 text-center">
+        <div className="card mt-4 bg-surface p-6 text-center">
           <div className="mb-3 text-4xl animate-floaty">🔗</div>
-          <h2 className="mb-2 text-xl font-bold">بانتظار شريكك…</h2>
-          <p className="mb-5 text-sm text-white/60">
+          <h2 className="mb-2 text-xl font-extrabold">بانتظار شريكك…</h2>
+          <p className="mb-5 text-sm text-ink-soft">
             أرسل الرابط لشريكك، وتبدأ المباراة تلقائيًا حين يدخل.
           </p>
-          <button onClick={shareGame} className="btn-primary mb-3 w-full rounded-2xl py-3.5 text-base font-bold">
+          <button onClick={shareGame} className="btn btn-primary mb-3 w-full text-base">
             📲 مشاركة الرابط
           </button>
           <div className="flex items-center gap-2">
-            <input readOnly value={shareUrl} dir="ltr" onFocus={(e) => e.currentTarget.select()} className="input-field w-full truncate rounded-xl px-3 py-2.5 text-sm text-white/80" />
-            <button onClick={copyLink} className="btn-ghost shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold">
+            <input readOnly value={shareUrl} dir="ltr" onFocus={(e) => e.currentTarget.select()} className="input-field w-full truncate px-3 py-2.5 text-sm text-ink-soft" />
+            <button onClick={copyLink} className="btn btn-ghost shrink-0 px-4 text-sm">
               {copied ? "✓ تم" : "نسخ"}
             </button>
           </div>
@@ -430,17 +436,17 @@ export default function WordGridRoom() {
       {bothPresent && !finished && (
         <div className="mb-2">
           <div className="mb-1 flex items-center justify-between text-sm">
-            <span className="font-bold text-white/80">الجولة {roundIdx + 1}/{maxR}</span>
-            <span className="tabular-nums font-extrabold text-white/80">
+            <span className="font-bold text-ink">الجولة {roundIdx + 1}/{maxR}</span>
+            <span className="tabular-nums font-extrabold text-ink">
               {inPlay ? (
-                <span className={playRemaining <= 15 ? "text-rose-400" : ""}>{playRemaining}ث</span>
+                <span className={playRemaining <= 15 ? "text-danger" : ""}>{playRemaining}ث</span>
               ) : (
-                <span className="text-fuchsia-300">الجولة التالية بعد {revealRemaining}ث</span>
+                <span className="text-primary-dark">الجولة التالية بعد {revealRemaining}ث</span>
               )}
             </span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-gradient-to-l from-fuchsia-500 to-violet-500 transition-[width] duration-200" style={{ width: `${timePct}%` }} />
+          <div className="h-3 w-full overflow-hidden rounded-pill border-2 border-ink bg-surface-strong">
+            <div className="h-full rounded-pill bg-primary transition-[width] duration-200" style={{ width: `${timePct}%` }} />
           </div>
         </div>
       )}
@@ -448,9 +454,9 @@ export default function WordGridRoom() {
       {/* Board (play) */}
       {bothPresent && inPlay && grid && (
         <>
-          <div className="glass mb-2 flex items-center justify-between rounded-2xl px-4 py-2 text-sm">
-            <span className="text-emerald-300">نقاطك: {myRoundScore}</span>
-            <span className="text-rose-300">خصمك: {oppRoundScore}</span>
+          <div className="card mb-2 flex items-center justify-between bg-surface px-4 py-2 text-sm">
+            <span className="font-bold text-primary-dark">نقاطك: {myRoundScore}</span>
+            <span className="font-bold text-coral">خصمك: {oppRoundScore}</span>
           </div>
           <div ref={wrapRef} className="flex justify-center">
             <div
@@ -467,14 +473,14 @@ export default function WordGridRoom() {
                   <polyline
                     points={selection.map((i) => { const p = center(i); return `${p.x},${p.y}`; }).join(" ")}
                     fill="none"
-                    stroke="#2dd4bf"
+                    stroke="#ff806c"
                     strokeWidth={Math.max(4, cell * 0.12)}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                     opacity={0.9}
                   />
                 )}
-                {selection.map((i) => { const p = center(i); return <circle key={i} cx={p.x} cy={p.y} r={cell * 0.12} fill="#2dd4bf" />; })}
+                {selection.map((i) => { const p = center(i); return <circle key={i} cx={p.x} cy={p.y} r={cell * 0.12} fill="#ff806c" />; })}
               </svg>
               {grid.map((ch, i) => {
                 const p = center(i);
@@ -483,16 +489,17 @@ export default function WordGridRoom() {
                 return (
                   <div
                     key={i}
-                    className="absolute grid place-items-center rounded-full font-bold shadow-md transition-colors"
+                    className="absolute grid place-items-center rounded-full font-extrabold transition-colors"
                     style={{
                       width: cell, height: cell, left: p.x, top: p.y,
                       transform: `translate(-50%, -50%)${sel ? " scale(1.06)" : ""}`,
                       fontSize: cell * 0.42,
-                      background: sel ? "#14b8a6" : "#f8fafc",
-                      color: sel ? "#ffffff" : "#1e1b2e",
+                      background: sel ? "#5267e8" : "#fffaf1",
+                      color: sel ? "#ffffff" : "#20243d",
+                      border: "2px solid #20243d",
                       zIndex: sel ? 2 : 1,
                       pointerEvents: "none",
-                      outline: isLast && sel ? "3px solid #99f6e4" : "none",
+                      outline: isLast && sel ? "3px solid #ffd369" : "none",
                     }}
                   >
                     {ch}
@@ -502,11 +509,11 @@ export default function WordGridRoom() {
             </div>
           </div>
           <div className="mt-2 h-5 text-center text-sm">
-            {flash && <span className={flash.ok ? "text-emerald-300" : "text-rose-300"}>{flash.msg}</span>}
+            {flash && <span className={flash.ok ? "font-bold text-success" : "font-bold text-danger"}>{flash.msg}</span>}
           </div>
-          <div className="glass mt-1 rounded-2xl p-3">
-            <div className="mb-1 text-xs text-white/50">كلماتك ({myWords.length})</div>
-            <WordChips words={myWords} tone="emerald" />
+          <div className="card mt-1 bg-surface p-3">
+            <div className="mb-1 text-xs text-ink-soft">كلماتك ({myWords.length})</div>
+            <WordChips words={myWords} tone="primary" />
           </div>
         </>
       )}
@@ -514,21 +521,21 @@ export default function WordGridRoom() {
       {/* Round reveal */}
       {bothPresent && inReveal && (
         <div className="flex flex-col gap-3">
-          <div className="glass rounded-3xl p-5 text-center">
+          <div className="card bg-surface p-5 text-center">
             <div className="mb-1 text-3xl">
               {myRoundScore > oppRoundScore ? "🌟" : oppRoundScore > myRoundScore ? "🙁" : "🤝"}
             </div>
-            <h2 className="text-lg font-bold">
+            <h2 className="text-lg font-extrabold">
               {myRoundScore > oppRoundScore
                 ? `فزت بالجولة ${roundIdx + 1}!`
                 : oppRoundScore > myRoundScore
                 ? `فاز خصمك بالجولة ${roundIdx + 1}`
                 : `تعادل في الجولة ${roundIdx + 1}`}
             </h2>
-            <p className="mt-1 text-sm text-white/70">
+            <p className="mt-1 text-sm text-ink-soft">
               أنت {myRoundScore} — خصمك {oppRoundScore}
             </p>
-            <p className="mt-2 text-xs text-fuchsia-300">الجولة التالية بعد {revealRemaining}ث…</p>
+            <p className="mt-2 text-xs text-primary-dark">الجولة التالية بعد {revealRemaining}ث…</p>
           </div>
           <BothWords myWords={myWords} oppWords={oppWords} />
         </div>
@@ -539,18 +546,18 @@ export default function WordGridRoom() {
         <div className="flex flex-col gap-3">
           <div
             className={[
-              "rounded-3xl p-6 text-center",
-              myStars === oppStars ? "bg-white/10 text-white" : myStars > oppStars ? "bg-emerald-500/15 text-emerald-200" : "bg-rose-500/15 text-rose-200",
+              "card p-6 text-center",
+              myStars === oppStars ? "bg-surface" : myStars > oppStars ? "bg-success-soft" : "bg-danger-soft",
             ].join(" ")}
           >
-            <div className="mb-1 text-5xl">{myStars === oppStars ? "🤝" : myStars > oppStars ? "🏆" : "😅"}</div>
+            <div className="mb-1 animate-stamp text-5xl">{myStars === oppStars ? "🤝" : myStars > oppStars ? "🏆" : "😅"}</div>
             <p className="text-2xl font-extrabold">
               {myStars === oppStars ? "تعادل!" : myStars > oppStars ? "فزت بالمباراة! 🎉" : "فاز خصمك"}
             </p>
             <p className="mt-2 text-lg font-bold">
               ⭐ {myStars} — {oppStars} ⭐
             </p>
-            <button onClick={newMatch} className="btn-primary mt-5 rounded-2xl px-8 py-3 font-bold">
+            <button onClick={newMatch} className="btn btn-primary mt-5 px-8">
               🔄 مباراة جديدة
             </button>
           </div>
@@ -566,13 +573,13 @@ export default function WordGridRoom() {
             const ms = totalScore(mw);
             const os = totalScore(ow);
             return (
-              <div key={r} className="glass rounded-3xl p-4">
+              <div key={r} className="card bg-surface p-4">
                 <div className="mb-2 flex items-center justify-between text-sm font-bold">
-                  <span className="text-white/70">الجولة {r + 1}</span>
+                  <span className="text-ink-soft">الجولة {r + 1}</span>
                   <span>
-                    <span className="text-emerald-300">{ms}</span>
-                    <span className="text-white/40"> — </span>
-                    <span className="text-rose-300">{os}</span>
+                    <span className="text-primary-dark">{ms}</span>
+                    <span className="text-ink-soft"> — </span>
+                    <span className="text-coral">{os}</span>
                     {ms > os ? " 🌟" : os > ms ? " (خصمك 🌟)" : ""}
                   </span>
                 </div>
@@ -590,14 +597,14 @@ export default function WordGridRoom() {
 
 /* -------------------------------- Pieces -------------------------------- */
 
-function WordChips({ words, tone }: { words: string[]; tone: "emerald" | "rose" }) {
-  if (words.length === 0) return <p className="text-sm text-white/30">لا شيء</p>;
-  const cls = tone === "emerald" ? "bg-emerald-500/15 text-emerald-200" : "bg-rose-500/15 text-rose-200";
+function WordChips({ words, tone }: { words: string[]; tone: "primary" | "coral" }) {
+  if (words.length === 0) return <p className="text-sm text-ink-soft">لا شيء</p>;
+  const cls = tone === "primary" ? "bg-primary-soft text-primary-dark" : "bg-coral-soft text-coral";
   return (
     <div dir="rtl" className="flex flex-wrap gap-2">
       {words.map((w) => (
-        <span key={w} className={["rounded-lg px-2.5 py-1 text-sm font-bold", cls].join(" ")}>
-          {w} <span className="opacity-60">+{wordScore(w)}</span>
+        <span key={w} className={["rounded-md border-2 border-ink px-2.5 py-1 text-sm font-bold", cls].join(" ")}>
+          {w} <span className="opacity-70">+{wordScore(w)}</span>
         </span>
       ))}
     </div>
@@ -614,26 +621,26 @@ function BothWords({
   compact?: boolean;
 }) {
   return (
-    <div className={compact ? "flex flex-col gap-2" : "glass rounded-3xl p-4 flex flex-col gap-3"}>
+    <div className={compact ? "flex flex-col gap-2" : "card flex flex-col gap-3 bg-surface p-4"}>
       <div>
-        <div className="mb-1 text-xs text-white/50">كلماتك ({myWords.length})</div>
-        <WordChips words={myWords} tone="emerald" />
+        <div className="mb-1 text-xs text-ink-soft">كلماتك ({myWords.length})</div>
+        <WordChips words={myWords} tone="primary" />
       </div>
       <div>
-        <div className="mb-1 text-xs text-white/50">كلمات خصمك ({oppWords.length})</div>
-        <WordChips words={oppWords} tone="rose" />
+        <div className="mb-1 text-xs text-ink-soft">كلمات خصمك ({oppWords.length})</div>
+        <WordChips words={oppWords} tone="coral" />
       </div>
     </div>
   );
 }
 
-function Stars({ label, count, total, color }: { label: string; count: number; total: number; color: "emerald" | "rose" }) {
+function Stars({ label, count, total, color }: { label: string; count: number; total: number; color: "primary" | "coral" }) {
   return (
     <div className="text-center">
-      <div className="text-[11px] text-white/50">{label}</div>
-      <div className={["text-sm font-bold", color === "emerald" ? "text-emerald-300" : "text-rose-300"].join(" ")}>
+      <div className="text-[11px] text-ink-soft">{label}</div>
+      <div className={["text-sm font-bold", color === "primary" ? "text-primary-dark" : "text-coral"].join(" ")}>
         {"⭐".repeat(count)}
-        <span className="text-white/20">{"·".repeat(Math.max(0, total - count))}</span>
+        <span className="text-muted">{"·".repeat(Math.max(0, total - count))}</span>
       </div>
     </div>
   );
@@ -641,7 +648,7 @@ function Stars({ label, count, total, color }: { label: string; count: number; t
 
 function BackHome({ router }: { router: ReturnType<typeof useRouter> }) {
   return (
-    <button onClick={() => router.push("/")} className="btn-ghost rounded-2xl px-6 py-3 font-bold">
+    <button onClick={() => router.push("/")} className="btn btn-ghost px-6">
       كل الألعاب
     </button>
   );
@@ -649,7 +656,7 @@ function BackHome({ router }: { router: ReturnType<typeof useRouter> }) {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-white/80">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-ink-soft">
       {children}
     </main>
   );

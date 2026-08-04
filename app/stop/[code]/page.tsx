@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getPlayerId } from "@/lib/player";
+import { saveRecentRoom } from "@/lib/recent";
 import {
   CATEGORIES,
   ROUND_DURATION,
@@ -58,6 +59,7 @@ export default function StopRoom() {
     const pid = getPlayerId();
     setMe(pid);
     setShareUrl(`${window.location.origin}/stop/${code}`);
+    saveRecentRoom("stop", code);
     let cancelled = false;
 
     async function init() {
@@ -320,31 +322,35 @@ export default function StopRoom() {
   const totOpp = oppScore + rpOpp;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col px-4 pt-safe pb-safe">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col px-4 pt-safe pb-safe">
       {/* Header */}
       <header className="mb-3 flex items-center justify-between">
-        <button onClick={() => router.push("/")} className="text-white/50 hover:text-white" aria-label="خروج">
+        <button
+          onClick={() => router.push("/")}
+          className="grid h-10 w-10 place-items-center rounded-md border-2 border-ink bg-surface-strong text-ink"
+          aria-label="خروج"
+        >
           ✕
         </button>
         <div className="flex items-center gap-4">
-          <Pill label="أنت" score={totMine} color="emerald" />
-          <span className="text-xs text-white/40">مقابل</span>
-          <Pill label="خصمك" score={totOpp} color="rose" />
+          <Pill label="أنت" score={totMine} color="primary" />
+          <span className="text-xs text-ink-soft">مقابل</span>
+          <Pill label="خصمك" score={totOpp} color="coral" />
         </div>
-        <div dir="ltr" className="text-xs font-bold tracking-widest text-white/50">
+        <div dir="ltr" className="text-xs font-bold tracking-widest text-ink-soft">
           {code}
         </div>
       </header>
 
       {/* Waiting */}
       {!bothPresent && (
-        <div className="glass mt-4 rounded-3xl p-6 text-center">
+        <div className="card mt-4 bg-surface p-6 text-center">
           <div className="mb-3 text-4xl animate-floaty">🔗</div>
-          <h2 className="mb-2 text-xl font-bold">بانتظار شريكك…</h2>
-          <p className="mb-5 text-sm text-white/60">
+          <h2 className="mb-2 text-xl font-extrabold">بانتظار شريكك…</h2>
+          <p className="mb-5 text-sm text-ink-soft">
             أرسل الرابط لشريكك ليدخل نفس الغرفة، وتبدأ المنافسة.
           </p>
-          <button onClick={shareGame} className="btn-primary mb-3 w-full rounded-2xl py-3.5 text-base font-bold">
+          <button onClick={shareGame} className="btn btn-primary mb-3 w-full text-base">
             📲 مشاركة الرابط
           </button>
           <div className="flex items-center gap-2">
@@ -353,9 +359,9 @@ export default function StopRoom() {
               value={shareUrl}
               dir="ltr"
               onFocus={(e) => e.currentTarget.select()}
-              className="input-field w-full truncate rounded-xl px-3 py-2.5 text-sm text-white/80"
+              className="input-field w-full truncate px-3 py-2.5 text-sm text-ink-soft"
             />
-            <button onClick={copyLink} className="btn-ghost shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold">
+            <button onClick={copyLink} className="btn btn-ghost shrink-0 px-4 text-sm">
               {copied ? "✓ تم" : "نسخ"}
             </button>
           </div>
@@ -364,18 +370,18 @@ export default function StopRoom() {
 
       {/* Round header: letter + timer */}
       {bothPresent && (
-        <div className="mb-3 flex items-center justify-between rounded-2xl glass px-4 py-3">
-          <div className="text-sm text-white/60">الجولة {game.round}</div>
+        <div className="card mb-3 flex items-center justify-between bg-surface px-4 py-3">
+          <div className="text-sm text-ink-soft">الجولة {game.round}</div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-white/50">الحرف</span>
-            <span className="grid h-11 w-11 place-items-center rounded-xl bg-fuchsia-500/25 text-2xl font-extrabold text-fuchsia-100">
+            <span className="text-xs text-ink-soft">الحرف</span>
+            <span className="grid h-11 w-11 place-items-center rounded-md border-2 border-ink bg-primary-soft text-2xl font-extrabold text-primary-dark">
               {letter}
             </span>
           </div>
           <div
             className={[
               "text-lg font-extrabold tabular-nums",
-              !reveal && remainingSec <= 15 ? "text-rose-400" : "text-white/80",
+              !reveal && remainingSec <= 15 ? "text-danger" : "text-ink",
             ].join(" ")}
           >
             {reveal ? "⏹" : `${remainingSec}ث`}
@@ -387,32 +393,29 @@ export default function StopRoom() {
       {bothPresent && !reveal && (
         <div className="flex flex-col gap-2">
           {iStopped ? (
-            <div className="glass rounded-3xl p-8 text-center">
+            <div className="card bg-surface p-8 text-center">
               <div className="mb-2 text-4xl">✋</div>
-              <h2 className="text-xl font-bold">قف! أرسلت إجاباتك</h2>
-              <p className="mt-2 text-sm text-white/60">بانتظار كشف النتيجة…</p>
+              <h2 className="text-xl font-extrabold">قف! أرسلت إجاباتك</h2>
+              <p className="mt-2 text-sm text-ink-soft">بانتظار كشف النتيجة…</p>
             </div>
           ) : (
             <>
               {CATEGORIES.map((cat) => (
-                <div key={cat} className="glass flex items-center gap-3 rounded-2xl p-3">
-                  <span className="w-16 shrink-0 text-sm font-bold text-white/70">{cat}</span>
+                <div key={cat} className="card flex items-center gap-3 bg-surface p-3">
+                  <span className="w-16 shrink-0 text-sm font-bold text-ink-soft">{cat}</span>
                   <input
                     value={answers[cat] ?? ""}
                     onChange={(e) => setAnswer(cat, e.target.value)}
                     placeholder={`${cat} بحرف ${letter}`}
                     dir="rtl"
-                    className="input-field w-full rounded-xl px-3 py-2.5 text-base text-white placeholder:text-white/25"
+                    className="input-field w-full px-3 py-2.5 text-base text-ink"
                   />
                 </div>
               ))}
-              <button
-                onClick={pressStop}
-                className="btn-primary mt-2 w-full rounded-2xl py-4 text-xl font-extrabold"
-              >
+              <button onClick={pressStop} className="btn btn-coral mt-2 w-full py-4 text-xl">
                 قف! ✋
               </button>
-              <p className="text-center text-xs text-white/40">
+              <p className="text-center text-xs text-ink-soft">
                 اضغط «قف» عندما تنتهي — سيوقف الجولة لكليكما.
               </p>
             </>
@@ -423,8 +426,8 @@ export default function StopRoom() {
       {/* Reveal */}
       {bothPresent && reveal && (
         <div className="flex flex-col gap-3">
-          <div className="glass rounded-3xl p-4">
-            <div className="mb-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center text-xs text-white/50">
+          <div className="card bg-surface p-4">
+            <div className="mb-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center text-xs text-ink-soft">
               <span>أنت</span>
               <span>التصنيف</span>
               <span>خصمك</span>
@@ -435,25 +438,25 @@ export default function StopRoom() {
               const pMine = categoryPoints(mine, opp, letter);
               const pOpp = categoryPoints(opp, mine, letter);
               return (
-                <div key={cat} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-white/5 py-2 text-sm" dir="rtl">
+                <div key={cat} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-t-2 border-muted py-2 text-sm" dir="rtl">
                   <AnswerCell word={mine} points={pMine} />
-                  <span className="text-center text-xs font-bold text-white/50">{cat}</span>
+                  <span className="text-center text-xs font-bold text-ink-soft">{cat}</span>
                   <AnswerCell word={opp} points={pOpp} />
                 </div>
               );
             })}
-            <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-white/10 pt-2 text-center font-bold">
-              <span className="text-emerald-300">+{rpMine}</span>
-              <span className="text-xs text-white/50">هذه الجولة</span>
-              <span className="text-rose-300">+{rpOpp}</span>
+            <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-t-2 border-ink pt-2 text-center font-bold">
+              <span className="text-primary-dark">+{rpMine}</span>
+              <span className="text-xs text-ink-soft">هذه الجولة</span>
+              <span className="text-coral">+{rpOpp}</span>
             </div>
           </div>
 
           <div className="flex gap-2">
-            <button onClick={newGame} className="btn-ghost flex-1 rounded-2xl py-3 font-bold">
+            <button onClick={newGame} className="btn btn-ghost flex-1">
               لعبة جديدة
             </button>
-            <button onClick={nextRound} className="btn-primary flex-[2] rounded-2xl py-3 font-bold">
+            <button onClick={nextRound} className="btn btn-primary flex-[2]">
               الجولة التالية ▶
             </button>
           </div>
@@ -467,20 +470,20 @@ export default function StopRoom() {
 
 function AnswerCell({ word, points }: { word: string; points: number }) {
   const color =
-    points === 10 ? "text-emerald-200" : points === 5 ? "text-amber-200" : "text-white/30";
+    points === 10 ? "text-success" : points === 5 ? "text-ink" : "text-ink-soft";
   return (
-    <div className="flex items-center justify-between gap-1 rounded-lg bg-white/5 px-2 py-1">
+    <div className="flex items-center justify-between gap-1 rounded-md border-2 border-ink bg-surface-strong px-2 py-1">
       <span className={["truncate font-bold", color].join(" ")}>{word || "—"}</span>
-      <span className="shrink-0 text-[11px] text-white/40">{points}</span>
+      <span className="shrink-0 text-[11px] text-ink-soft">{points}</span>
     </div>
   );
 }
 
-function Pill({ label, score, color }: { label: string; score: number; color: "emerald" | "rose" }) {
+function Pill({ label, score, color }: { label: string; score: number; color: "primary" | "coral" }) {
   return (
     <div className="text-center">
-      <div className="text-[11px] text-white/50">{label}</div>
-      <div className={["text-lg font-extrabold tabular-nums", color === "emerald" ? "text-emerald-300" : "text-rose-300"].join(" ")}>
+      <div className="text-[11px] text-ink-soft">{label}</div>
+      <div className={["text-lg font-extrabold tabular-nums", color === "primary" ? "text-primary-dark" : "text-coral"].join(" ")}>
         {score}
       </div>
     </div>
@@ -489,7 +492,7 @@ function Pill({ label, score, color }: { label: string; score: number; color: "e
 
 function BackHome({ router }: { router: ReturnType<typeof useRouter> }) {
   return (
-    <button onClick={() => router.push("/")} className="btn-ghost rounded-2xl px-6 py-3 font-bold">
+    <button onClick={() => router.push("/")} className="btn btn-ghost px-6">
       كل الألعاب
     </button>
   );
@@ -497,7 +500,7 @@ function BackHome({ router }: { router: ReturnType<typeof useRouter> }) {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-white/80">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-ink-soft">
       {children}
     </main>
   );

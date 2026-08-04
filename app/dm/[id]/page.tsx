@@ -114,32 +114,36 @@ export default function DirectMessage() {
     return (
       <Centered>
         <p className="mb-4 text-lg">سجّل الدخول لمراسلة أصدقائك.</p>
-        <Link href="/account" className="btn-primary rounded-2xl px-6 py-3 font-bold">
+        <Link href="/account" className="btn btn-primary">
           تسجيل الدخول
         </Link>
       </Centered>
     );
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col px-4 pt-safe pb-safe">
-      <header className="flex items-center justify-between border-b border-white/10 py-3">
-        <Link href="/friends" className="text-white/60 hover:text-white">
-          ← الأصدقاء
+    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col px-4 pt-safe pb-safe">
+      <header className="flex items-center justify-between border-b-2 border-ink py-3">
+        <Link
+          href="/friends"
+          className="grid h-10 w-10 place-items-center rounded-md border-2 border-ink bg-surface-strong text-ink"
+          aria-label="رجوع"
+        >
+          ›
         </Link>
         <span className="font-bold">💬 @{friendName}</span>
-        <span className="w-12" />
+        <span className="w-10" />
       </header>
 
       <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto py-3">
         {hasMore && (
           <div className="text-center">
-            <button onClick={loadOlder} className="btn-ghost rounded-full px-4 py-1.5 text-xs font-bold">
+            <button onClick={loadOlder} className="chip">
               تحميل رسائل أقدم
             </button>
           </div>
         )}
         {messages.length === 0 ? (
-          <p className="mt-10 text-center text-sm text-white/40">ابدأ المحادثة ❤️</p>
+          <p className="mt-10 text-center text-sm text-ink-soft">ابدأ المحادثة ❤️</p>
         ) : (
           messages.map((m) => {
             const mine = m.sender === user.id;
@@ -147,8 +151,8 @@ export default function DirectMessage() {
               <div key={m.id} className={`flex ${mine ? "justify-start" : "justify-end"}`}>
                 <div
                   className={[
-                    "max-w-[78%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[15px] leading-relaxed",
-                    mine ? "rounded-bl-md bg-fuchsia-600/80 text-white" : "rounded-br-md bg-white/12 text-white",
+                    "max-w-[78%] whitespace-pre-wrap break-words rounded-md border-2 border-ink px-3.5 py-2 text-[15px] leading-relaxed",
+                    mine ? "bg-primary text-white" : "bg-surface-strong text-ink",
                   ].join(" ")}
                 >
                   {m.body}
@@ -160,7 +164,7 @@ export default function DirectMessage() {
       </div>
 
       <div
-        className="flex items-center gap-2 border-t border-white/10 py-3"
+        className="flex items-center gap-2 border-t-2 border-ink py-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         <input
@@ -170,12 +174,12 @@ export default function DirectMessage() {
           placeholder="اكتب رسالة…"
           dir="rtl"
           enterKeyHint="send"
-          className="input-field w-full rounded-2xl px-4 py-3 text-base text-white placeholder:text-white/30"
+          className="input-field w-full px-4 py-3 text-base"
         />
         <button
           onClick={send}
           disabled={!text.trim()}
-          className="btn-primary shrink-0 rounded-2xl px-5 py-3 font-bold disabled:opacity-40"
+          className="btn btn-primary shrink-0"
         >
           إرسال
         </button>
@@ -186,7 +190,7 @@ export default function DirectMessage() {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-white/80">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center text-ink-soft">
       {children}
     </main>
   );
