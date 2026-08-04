@@ -15,7 +15,7 @@ export default function GamesLibrary() {
   const shown =
     filter === "الكل"
       ? rest
-      : GAMES.filter((g) => g.categories.includes(filter));
+      : GAMES.filter((g) => (g.categories as readonly string[]).includes(filter));
   const showFeatured = filter === "الكل";
 
   return (
